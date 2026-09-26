@@ -1,59 +1,108 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Shop } from '@/lib/types';
 import POSScreen from '@/components/POSScreen';
 import SaleHistory from '@/components/SaleHistory';
-import ProductManager from '@/components/ProductManager';
+import InventoryScreen from '@/components/InventoryScreen';
+import BusinessScreen from '@/components/BusinessScreen';
+import ActionCenterView from '@/components/ActionCenterView';
+import AskBaithakView from '@/components/AskBaithakView';
+import SettingsBackupView from '@/components/SettingsBackupView';
+import { syncEngine, type SyncEngineStatus } from '@/lib/sync/engine';
 
-type Tab = 'pos' | 'history' | 'inventory';
+export type MainTab =
+  | 'pos'
+  | 'history'
+  | 'stock'
+  | 'business'
+  | 'action_center'
+  | 'ai'
+  | 'settings';
 
 export default function Dashboard({ shop }: { shop: Shop }) {
-  const [activeTab, setActiveTab] = useState<Tab>('pos');
+  const [activeTab, setActiveTab] = useState<MainTab>('pos');
+  const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.getStatus());
+
+  useEffect(() => {
+    // Start background sync listener
+    syncEngine.start();
+    const unsub = syncEngine.subscribe((st) => setSyncStatus(st));
+    return () => {
+      unsub();
+      syncEngine.stop();
+    };
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <header className="bg-blue-900 text-white px-4 py-3 flex items-center justify-between shadow">
+      {/* Top Header */}
+      <header className="bg-blue-900 text-white px-4 py-2.5 flex items-center justify-between shadow-md">
         <div>
-          <div className="font-bold text-lg leading-tight">{shop.name}</div>
-          <div className="text-blue-200 text-xs">{shop.ownerName}</div>
+          <div className="font-black text-base tracking-wide flex items-center gap-2">
+            <span>बैठक</span>
+            <span className="font-semibold text-sm opacity-90 truncate max-w-[180px] sm:max-w-xs">
+              {shop.name}
+            </span>
+          </div>
+          <div className="text-blue-200 text-[11px]">{shop.ownerName} • Shop OS</div>
         </div>
-        <div className="text-blue-200 text-xs text-right">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />
-          Saved locally
+
+        {/* Sync Status Badge */}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-blue-100 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              syncStatus.state === 'synced'
+                ? 'bg-green-400 animate-pulse'
+                : syncStatus.state === 'syncing'
+                ? 'bg-amber-300 animate-ping'
+                : 'bg-gray-400'
+            }`}
+          />
+          <span className="truncate max-w-[140px]">{syncStatus.label}</span>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-hidden">
+      {/* Main Tab Panels */}
+      <main className="flex-1 overflow-hidden relative">
         {activeTab === 'pos' && <POSScreen shopId={shop.id} />}
         {activeTab === 'history' && <SaleHistory shopId={shop.id} />}
-        {activeTab === 'inventory' && <ProductManager shopId={shop.id} />}
+        {activeTab === 'stock' && <InventoryScreen shopId={shop.id} />}
+        {activeTab === 'business' && <BusinessScreen shopId={shop.id} />}
+        {activeTab === 'action_center' && <ActionCenterView shopId={shop.id} />}
+        {activeTab === 'ai' && <AskBaithakView shopId={shop.id} />}
+        {activeTab === 'settings' && <SettingsBackupView shop={shop} />}
       </main>
 
-      {/* Bottom nav */}
-      <nav className="bg-white border-t border-gray-200 flex">
+      {/* Bottom Counter Bar Navigation (Touch Optimized, min 48px) */}
+      <nav className="bg-white border-t border-gray-200 flex justify-around shadow-lg select-none">
         {(
           [
-            { id: 'pos' as Tab, label: 'POS', icon: '🛒' },
-            { id: 'history' as Tab, label: 'Sales', icon: '📋' },
-            { id: 'inventory' as Tab, label: 'Products', icon: '📦' },
+            { id: 'pos' as MainTab, label: 'POS', icon: '🛒' },
+            { id: 'history' as MainTab, label: 'Sales', icon: '📋' },
+            { id: 'stock' as MainTab, label: 'Stock', icon: '📦' },
+            { id: 'business' as MainTab, label: 'Khata', icon: '📝' },
+            { id: 'action_center' as MainTab, label: 'Alerts', icon: '⚡' },
+            { id: 'ai' as MainTab, label: 'Ask AI', icon: '🤖' },
+            { id: 'settings' as MainTab, label: 'Backup', icon: '⚙️' },
           ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 flex flex-col items-center gap-1 text-xs font-medium transition-colors min-h-[60px] ${
-              activeTab === tab.id
-                ? 'text-blue-900 border-t-2 border-blue-900 -mt-px'
-                : 'text-gray-400'
-            }`}
-          >
-            <span className="text-xl">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+        ).map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 min-h-[58px] transition-all ${
+                isActive
+                  ? 'text-blue-900 border-t-2 border-blue-900 bg-blue-50/40 font-bold -mt-px'
+                  : 'text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              <span className="text-lg leading-none">{tab.icon}</span>
+              <span className="text-[10px] tracking-tight">{tab.label}</span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );

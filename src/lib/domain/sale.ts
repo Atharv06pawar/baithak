@@ -114,10 +114,10 @@ export async function createSale(input: CreateSaleInput): Promise<{ sale: Sale; 
     updatedAt: now,
   };
 
-  // Atomic transaction: sale + items + stock update + outbox
+  // Atomic transaction: sale + items + stock update + outbox (+ udhaar ledger if applicable)
   await db.transaction(
     'rw',
-    [db.sales, db.sale_items, db.products, db.sync_outbox, db.audit_logs],
+    [db.sales, db.sale_items, db.products, db.sync_outbox, db.audit_logs, db.customer_ledger],
     async () => {
       await db.sales.add(sale);
       await db.sale_items.bulkAdd(saleItems);
@@ -125,6 +125,30 @@ export async function createSale(input: CreateSaleInput): Promise<{ sale: Sale; 
       // Decrement stock for each item
       for (const item of input.items) {
         await decrementStock(db, item.productId, item.quantity);
+      }
+
+      // If udhaar sale with customer, record in ledger
+      if (input.paymentMethod === 'udhaar' && input.customerId) {
+        const history = await db.customer_ledger
+          .where('shopId')
+          .equals(input.shopId)
+          .filter((e) => e.customerId === input.customerId)
+          .sortBy('createdAt');
+        const lastBalance = history.length > 0 ? history[history.length - 1].runningBalance : 0;
+        const runningBalance = lastBalance + total;
+
+        await db.customer_ledger.add({
+          id: crypto.randomUUID(),
+          shopId: input.shopId,
+          customerId: input.customerId,
+          type: 'sale',
+          saleId,
+          amount: total,
+          runningBalance,
+          note: `Sale #${saleNumber}`,
+          recordedBy: input.servedBy,
+          createdAt: now,
+        });
       }
 
       // Sync outbox (one event per sale)
@@ -173,7 +197,7 @@ export async function reverseSale(
 
   await db.transaction(
     'rw',
-    [db.sales, db.products, db.sync_outbox, db.audit_logs],
+    [db.sales, db.products, db.sync_outbox, db.audit_logs, db.customer_ledger],
     async () => {
       // Update original sale status
       await db.sales.update(saleId, {
@@ -186,6 +210,29 @@ export async function reverseSale(
       // Restore stock
       for (const item of originalItems) {
         await incrementStock(db, item.productId, item.quantity);
+      }
+
+      // If this was an udhaar sale, reverse the customer debt
+      if (existing.paymentMethod === 'udhaar' && existing.customerId) {
+        const history = await db.customer_ledger
+          .where('shopId')
+          .equals(shopId)
+          .filter((e) => e.customerId === existing.customerId)
+          .sortBy('createdAt');
+        const lastBalance = history.length > 0 ? history[history.length - 1].runningBalance : 0;
+        const runningBalance = lastBalance - existing.total;
+
+        await db.customer_ledger.add({
+          id: crypto.randomUUID(),
+          shopId,
+          customerId: existing.customerId,
+          type: 'adjustment',
+          saleId,
+          amount: -existing.total,
+          runningBalance,
+          note: `Reversal of Sale #${existing.saleNumber}: ${reason}`,
+          createdAt: now,
+        });
       }
 
       // Outbox
