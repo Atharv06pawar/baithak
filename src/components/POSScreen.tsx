@@ -27,6 +27,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
   const [status, setStatus] = useState<'idle' | 'completing' | 'error'>('idle');
   const [completedSale, setCompletedSale] = useState<{ sale: Sale; items: CartItem[] } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,6 +146,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
 
       setCompletedSale({ sale: result.sale, items: [...cart] });
       setCart([]);
+      setIsMobileCartOpen(false);
       setCashReceived('');
       setDiscountRupees('');
       setSearch('');
@@ -252,16 +254,54 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
           )}
         </div>
 
-        {/* Cart & Checkout Panel */}
-        <div className="bg-white border-t md:border-t-0 md:border-l border-gray-200 md:w-96 flex flex-col shadow-sm">
+        {/* Floating Mobile Cart Bar when items are present and drawer is closed */}
+        {!isMobileCartOpen && cart.length > 0 && (
+          <div className="md:hidden fixed bottom-[60px] left-0 right-0 p-2.5 z-40 bg-gradient-to-t from-gray-900/30 to-transparent pointer-events-none">
+            <div className="bg-blue-900 text-white rounded-2xl p-3 shadow-2xl flex items-center justify-between pointer-events-auto border border-blue-700 animate-in fade-in slide-in-from-bottom duration-150">
+              <div>
+                <div className="text-[11px] text-blue-200 font-medium">
+                  {cart.reduce((s, i) => s + i.quantity, 0)} item(s) in cart
+                </div>
+                <div className="text-xl font-black">{formatMoney(total)}</div>
+              </div>
+              <button
+                onClick={() => setIsMobileCartOpen(true)}
+                className="bg-green-600 hover:bg-green-500 active:scale-95 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition-transform flex items-center gap-1.5"
+              >
+                <span>View Cart & Pay</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Cart & Checkout Panel (Side-by-side on desktop, full-screen overlay sheet on mobile) */}
+        <div
+          className={`${
+            isMobileCartOpen
+              ? 'fixed inset-0 z-50 flex flex-col bg-white md:static md:z-auto'
+              : 'hidden md:flex'
+          } md:w-96 flex-col bg-white border-t md:border-t-0 md:border-l border-gray-200 shadow-sm`}
+        >
           {/* Cart Header */}
-          <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-              Cart ({cart.reduce((s, i) => s + i.quantity, 0)} items)
-            </span>
+          <div className="p-3 border-b border-gray-100 flex items-center justify-between bg-gray-50 md:bg-white">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsMobileCartOpen(false)}
+                className="md:hidden text-blue-900 font-bold text-xs bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-sm"
+              >
+                ← Back
+              </button>
+              <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
+                Cart ({cart.reduce((s, i) => s + i.quantity, 0)} items)
+              </span>
+            </div>
             {cart.length > 0 && (
               <button
-                onClick={() => setCart([])}
+                onClick={() => {
+                  setCart([]);
+                  setIsMobileCartOpen(false);
+                }}
                 className="text-xs text-red-500 hover:text-red-700 font-medium"
               >
                 Clear

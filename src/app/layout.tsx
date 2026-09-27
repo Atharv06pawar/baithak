@@ -14,22 +14,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'BaithakOS',
-  description: 'Digital operating system for your shop',
+  title: 'BaithakOS — Shop Operating System',
+  description: 'Free, reliable offline-first operating system for neighborhood retail shops',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'BaithakOS',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1a5276',
+  themeColor: '#0f2b48',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
+
+import PWAInstallBanner from '@/components/PWAInstallBanner';
 
 export default function RootLayout({
   children,
@@ -38,8 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 min-h-screen`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 min-h-screen text-gray-900 select-none`}>
         <ShopProvider>
+          <PWAInstallBanner />
           {children}
         </ShopProvider>
       </body>

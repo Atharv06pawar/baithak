@@ -74,8 +74,8 @@ export default function Dashboard({ shop }: { shop: Shop }) {
         {activeTab === 'settings' && <SettingsBackupView shop={shop} />}
       </main>
 
-      {/* Bottom Counter Bar Navigation (Touch Optimized, min 48px) */}
-      <nav className="bg-white border-t border-gray-200 flex justify-around shadow-lg select-none">
+      {/* Bottom Counter Bar Navigation (Touch Optimized, min 48px, Safe Area Inset) */}
+      <nav className="bg-white border-t border-gray-200 flex justify-around shadow-lg select-none safe-bottom pb-1">
         {(
           [
             { id: 'pos' as MainTab, label: 'POS', icon: '🛒' },
@@ -92,10 +92,10 @@ export default function Dashboard({ shop }: { shop: Shop }) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2 px-1 flex flex-col items-center justify-center gap-0.5 min-h-[58px] transition-all ${
+              className={`flex-1 py-1.5 px-0.5 flex flex-col items-center justify-center gap-0.5 min-h-[52px] transition-all ${
                 isActive
-                  ? 'text-blue-900 border-t-2 border-blue-900 bg-blue-50/40 font-bold -mt-px'
-                  : 'text-gray-400 hover:text-gray-700'
+                  ? 'text-blue-900 border-t-2 border-blue-900 bg-blue-50/50 font-bold -mt-px'
+                  : 'text-gray-400 hover:text-gray-700 active:scale-95'
               }`}
             >
               <span className="text-lg leading-none">{tab.icon}</span>
