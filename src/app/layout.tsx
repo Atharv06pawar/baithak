@@ -38,6 +38,7 @@ export const viewport: Viewport = {
 };
 
 import PWAInstallBanner from '@/components/PWAInstallBanner';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 export default function RootLayout({
   children,
@@ -45,12 +46,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 min-h-screen text-gray-900 select-none`}>
-        <ShopProvider>
-          <PWAInstallBanner />
-          {children}
-        </ShopProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 dark:bg-slate-950 min-h-screen text-gray-900 dark:text-slate-100 select-none transition-colors duration-150`}>
+        <ThemeProvider>
+          <ShopProvider>
+            <PWAInstallBanner />
+            {children}
+          </ShopProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

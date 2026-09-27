@@ -12,7 +12,9 @@ import SettingsBackupView from '@/components/SettingsBackupView';
 import NotificationCenterModal from '@/components/NotificationCenterModal';
 import { syncEngine, type SyncEngineStatus } from '@/lib/sync/engine';
 import { getOperationalTasks } from '@/lib/domain/task';
+import { googleDriveAutoSync } from '@/lib/cloud/googleDrive';
 import { useShop } from '@/contexts/ShopContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export type MainTab =
   | 'pos'
@@ -25,10 +27,19 @@ export type MainTab =
 
 export default function Dashboard({ shop }: { shop: Shop }) {
   const { lock } = useShop();
+  const { isDark, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<MainTab>('pos');
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.getStatus());
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [pendingNotificationCount, setPendingNotificationCount] = useState(0);
+
+  // 5-Minute Google Drive Auto-Sync: Runs silently in the background when connected
+  useEffect(() => {
+    googleDriveAutoSync.start(shop.id);
+    return () => {
+      googleDriveAutoSync.stop();
+    };
+  }, [shop.id]);
 
   const refreshPendingCount = useCallback(async () => {
     try {
@@ -84,9 +95,9 @@ export default function Dashboard({ shop }: { shop: Shop }) {
   }, []);
 
   return (
-    <div className="flex flex-col h-[100dvh] max-h-[100dvh] w-full bg-gray-50 overflow-hidden fixed inset-0">
+    <div className="flex flex-col h-[100dvh] max-h-[100dvh] w-full bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden fixed inset-0">
       {/* Top Header - Strictly shrink-0 pinned at top */}
-      <header className="shrink-0 bg-blue-900 text-white px-4 py-2.5 flex items-center justify-between shadow-md z-20">
+      <header className="shrink-0 bg-blue-900 dark:bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between shadow-md z-20 border-b border-blue-950 dark:border-slate-800">
         <div>
           <div className="font-black text-base tracking-wide flex items-center gap-2">
             <span>बैठक</span>
@@ -94,10 +105,20 @@ export default function Dashboard({ shop }: { shop: Shop }) {
               {shop.name}
             </span>
           </div>
-          <div className="text-blue-200 text-[11px]">{shop.ownerName} • Shop OS</div>
+          <div className="text-blue-200 dark:text-slate-400 text-[11px]">{shop.ownerName} • Shop OS</div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            className="bg-white/10 hover:bg-white/20 active:scale-95 text-blue-100 dark:text-slate-200 text-xs px-2.5 py-1.5 rounded-full border border-white/10 flex items-center gap-1 transition-transform"
+          >
+            <span className="text-xs leading-none">{isDark ? '☀️' : '🌙'}</span>
+            <span className="hidden sm:inline text-[11px] font-medium">{isDark ? 'Light' : 'Dark'}</span>
+          </button>
+
           {/* In-App Operational Notification Bell */}
           <button
             onClick={() => setIsNotificationOpen(true)}
@@ -167,7 +188,7 @@ export default function Dashboard({ shop }: { shop: Shop }) {
       />
 
       {/* Bottom Counter Bar Navigation - Strictly shrink-0 pinned to bottom of phone screen */}
-      <nav className="shrink-0 bg-white border-t border-gray-200 flex justify-around shadow-lg select-none safe-bottom pb-1 z-30">
+      <nav className="shrink-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex justify-around shadow-lg select-none safe-bottom pb-1 z-30">
         {(
           [
             { id: 'pos' as MainTab, label: 'POS', icon: '🛒' },
@@ -186,8 +207,8 @@ export default function Dashboard({ shop }: { shop: Shop }) {
               onClick={() => navigateTab(tab.id)}
               className={`flex-1 py-1.5 px-0.5 flex flex-col items-center justify-center gap-0.5 min-h-[52px] transition-all ${
                 isActive
-                  ? 'text-blue-900 border-t-2 border-blue-900 bg-blue-50/50 font-bold -mt-px'
-                  : 'text-gray-400 hover:text-gray-700 active:scale-95'
+                  ? 'text-blue-900 dark:text-blue-400 border-t-2 border-blue-900 dark:border-blue-400 bg-blue-50/50 dark:bg-slate-800/60 font-bold -mt-px'
+                  : 'text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 active:scale-95'
               }`}
             >
               <span className="text-lg leading-none">{tab.icon}</span>

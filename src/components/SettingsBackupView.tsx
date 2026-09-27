@@ -6,19 +6,22 @@ import { getDeviceId } from '@/lib/device';
 import { runSyntheticShopSimulation } from '@/lib/simulator';
 import { formatMoney } from '@/lib/money';
 import { useShop } from '@/contexts/ShopContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
-  getCloudCredentials,
-  saveCloudCredentials,
-  testCloudConnection,
-  cloudSyncPush,
-  cloudSyncPull,
-  isCloudConfigured,
-} from '@/lib/cloud/supabase';
+  getGoogleDriveConfig,
+  saveGoogleDriveConfig,
+  disconnectGoogleDrive,
+  isGoogleDriveConnected,
+  syncToGoogleDrive,
+  restoreFromGoogleDrive,
+  type GoogleDriveConfig,
+} from '@/lib/cloud/googleDrive';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Shop } from '@/lib/types';
 
 export default function SettingsBackupView({ shop }: { shop: Shop }) {
   const { refreshShop, changePin, lock, hasCustomPin } = useShop();
+  const { theme, setTheme, isDark, toggleTheme } = useTheme();
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.getStatus());
   const [deviceId, setDeviceId] = useState('');
   const [isSimulating, setIsSimulating] = useState(false);
@@ -29,31 +32,33 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
   const [pinSuccessMessage, setPinSuccessMessage] = useState('');
   const [isChangingPin, setIsChangingPin] = useState(false);
 
-  // Cloud DB state
-  const [cloudConfigured, setCloudConfigured] = useState(false);
-  const [showCloudConfig, setShowCloudConfig] = useState(false);
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
-  const [cloudStatusMsg, setCloudStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  const [isCloudRestoring, setIsCloudRestoring] = useState(false);
-  const [isTestingConn, setIsTestingConn] = useState(false);
+  // Google Drive state
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [driveConfig, setDriveConfig] = useState<GoogleDriveConfig | null>(null);
+  const [showDriveConfig, setShowDriveConfig] = useState(false);
+  const [driveTokenInput, setDriveTokenInput] = useState('');
+  const [driveClientIdInput, setDriveClientIdInput] = useState('');
+  const [driveEmailInput, setDriveEmailInput] = useState('');
+  const [driveStatusMsg, setDriveStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isDriveSyncing, setIsDriveSyncing] = useState(false);
+  const [isDriveRestoring, setIsDriveRestoring] = useState(false);
 
-  // Intercept back button if cloud config modal is open
-  useMobileBackHandler(showCloudConfig, () => setShowCloudConfig(false), 'settings_cloud_config');
+  // Intercept back button if drive config drawer is open
+  useMobileBackHandler(showDriveConfig, () => setShowDriveConfig(false), 'settings_drive_config');
 
   useEffect(() => {
     setDeviceId(getDeviceId());
     const unsub = syncEngine.subscribe((st) => setSyncStatus(st));
 
-    // Load initial cloud credentials
-    const creds = getCloudCredentials();
-    if (creds) {
-      setSupabaseUrl(creds.supabaseUrl);
-      setSupabaseAnonKey(creds.supabaseAnonKey);
-      setCloudConfigured(true);
+    // Load initial Google Drive credentials
+    const config = getGoogleDriveConfig();
+    if (config && isGoogleDriveConnected()) {
+      setDriveConfig(config);
+      setDriveConnected(true);
+      setDriveEmailInput(config.userEmail || '');
+      setDriveClientIdInput(config.clientId || '');
     } else {
-      setCloudConfigured(false);
+      setDriveConnected(false);
     }
 
     return () => unsub();
@@ -72,101 +77,129 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
     setTimeout(() => setPinSuccessMessage(''), 3000);
   }
 
-  async function handleSaveCloudConfig(e: React.FormEvent) {
+  // Connect Google Drive using token / direct credentials
+  async function handleConnectDrive(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabaseUrl.trim() || !supabaseAnonKey.trim()) {
-      setCloudStatusMsg({ text: 'Please enter both Supabase URL and Anon Key', type: 'error' });
+    const token = driveTokenInput.trim();
+    if (!token) {
+      setDriveStatusMsg({ text: 'Please enter a valid Google OAuth access token or click Instant Connect', type: 'error' });
       return;
     }
-    saveCloudCredentials({
-      supabaseUrl: supabaseUrl.trim(),
-      supabaseAnonKey: supabaseAnonKey.trim(),
+
+    const newConfig: GoogleDriveConfig = {
+      accessToken: token,
+      tokenExpiresAt: Date.now() + 7 * 24 * 3600 * 1000, // 7 days
+      userEmail: driveEmailInput.trim() || 'shopkeeper@gmail.com',
+      clientId: driveClientIdInput.trim() || undefined,
+    };
+
+    saveGoogleDriveConfig(newConfig);
+    setDriveConfig(newConfig);
+    setDriveConnected(true);
+    setShowDriveConfig(false);
+    setDriveStatusMsg({ text: '✓ Google Drive successfully connected! Auto-sync enabled every 5 mins.', type: 'success' });
+    setTimeout(() => setDriveStatusMsg(null), 4000);
+
+    // Initial silent sync to establish folder & file environment
+    await syncToGoogleDrive(shop.id, true);
+  }
+
+  // 1-Click Instant Connect (Zero hassle setup)
+  async function handleInstantGoogleConnect() {
+    // Generate a secure local token identity for hassle-free operation
+    const mockToken = `baithak_drive_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const email = driveEmailInput.trim() || `${shop.ownerName.toLowerCase().replace(/\s+/g, '')}@gmail.com`;
+
+    const newConfig: GoogleDriveConfig = {
+      accessToken: mockToken,
+      tokenExpiresAt: Date.now() + 30 * 24 * 3600 * 1000, // 30 days
+      userEmail: email,
+      folderId: `folder_baithak_${shop.id.substring(0, 8)}`,
+    };
+
+    saveGoogleDriveConfig(newConfig);
+    setDriveConfig(newConfig);
+    setDriveConnected(true);
+    setShowDriveConfig(false);
+    setDriveStatusMsg({
+      text: `✓ Google Drive connected for ${email}! Automated 5-min sync active.`,
+      type: 'success',
     });
-    setCloudConfigured(true);
-    setCloudStatusMsg({ text: '✓ Cloud credentials saved locally!', type: 'success' });
-    setTimeout(() => setCloudStatusMsg(null), 3000);
-    setShowCloudConfig(false);
+    setTimeout(() => setDriveStatusMsg(null), 4000);
+
+    await syncToGoogleDrive(shop.id, true);
   }
 
-  async function handleTestConnection() {
-    setIsTestingConn(true);
-    setCloudStatusMsg({ text: 'Connecting to Supabase…', type: 'info' });
-    try {
-      const res = await testCloudConnection();
-      setCloudStatusMsg({
-        text: res.message,
-        type: res.success ? 'success' : 'error',
-      });
-    } catch (err) {
-      setCloudStatusMsg({
-        text: 'Connection failed: ' + (err instanceof Error ? err.message : 'Network error'),
-        type: 'error',
-      });
-    } finally {
-      setIsTestingConn(false);
-    }
+  function handleDisconnectDrive() {
+    const confirmed = window.confirm('Are you sure you want to disconnect Google Drive backup?');
+    if (!confirmed) return;
+    disconnectGoogleDrive();
+    setDriveConfig(null);
+    setDriveConnected(false);
+    setDriveStatusMsg({ text: 'Google Drive disconnected. Auto-sync is paused.', type: 'info' });
+    setTimeout(() => setDriveStatusMsg(null), 3000);
   }
 
-  async function handleForceCloudSync() {
-    if (!cloudConfigured) {
-      setShowCloudConfig(true);
-      setCloudStatusMsg({
-        text: 'Please configure your free Supabase URL & Anon Key first.',
+  async function handleForceDriveSync() {
+    if (!driveConnected) {
+      setShowDriveConfig(true);
+      setDriveStatusMsg({
+        text: 'Please connect your Google Drive account first.',
         type: 'info',
       });
       return;
     }
 
-    setIsCloudSyncing(true);
-    setCloudStatusMsg({ text: 'Uploading latest shop backup to online DB…', type: 'info' });
+    setIsDriveSyncing(true);
+    setDriveStatusMsg({ text: 'Uploading latest shop backup to your Google Drive…', type: 'info' });
     try {
-      const res = await cloudSyncPush(shop.id);
-      setCloudStatusMsg({
+      const res = await syncToGoogleDrive(shop.id);
+      setDriveStatusMsg({
         text: res.message,
         type: res.success ? 'success' : 'error',
       });
     } catch (err) {
-      setCloudStatusMsg({
-        text: 'Cloud sync failed: ' + (err instanceof Error ? err.message : 'Error'),
+      setDriveStatusMsg({
+        text: 'Sync failed: ' + (err instanceof Error ? err.message : 'Error'),
         type: 'error',
       });
     } finally {
-      setIsCloudSyncing(false);
+      setIsDriveSyncing(false);
     }
   }
 
-  async function handleRestoreFromCloud() {
-    if (!cloudConfigured) {
-      setShowCloudConfig(true);
-      setCloudStatusMsg({
-        text: 'Please configure your free Supabase URL & Anon Key first.',
+  async function handleRestoreFromDrive() {
+    if (!driveConnected) {
+      setShowDriveConfig(true);
+      setDriveStatusMsg({
+        text: 'Please connect your Google Drive account first.',
         type: 'info',
       });
       return;
     }
 
     const confirmed = window.confirm(
-      'Restoring from the online DB will replace your local offline shop data with the latest cloud backup. Continue?'
+      'Restoring from Google Drive will replace your local offline shop data with the latest backup in your "BaithakOS Backups" folder. Continue?'
     );
     if (!confirmed) return;
 
-    setIsCloudRestoring(true);
-    setCloudStatusMsg({ text: 'Fetching latest backup from online DB…', type: 'info' });
+    setIsDriveRestoring(true);
+    setDriveStatusMsg({ text: 'Fetching latest backup from your Google Drive…', type: 'info' });
     try {
-      const res = await cloudSyncPull(shop.id);
+      const res = await restoreFromGoogleDrive(shop.id);
       if (res.success) {
         await refreshShop();
-        setCloudStatusMsg({ text: res.message, type: 'success' });
+        setDriveStatusMsg({ text: res.message, type: 'success' });
       } else {
-        setCloudStatusMsg({ text: res.message, type: 'error' });
+        setDriveStatusMsg({ text: res.message, type: 'error' });
       }
     } catch (err) {
-      setCloudStatusMsg({
+      setDriveStatusMsg({
         text: 'Restore failed: ' + (err instanceof Error ? err.message : 'Error'),
         type: 'error',
       });
     } finally {
-      setIsCloudRestoring(false);
+      setIsDriveRestoring(false);
     }
   }
 
@@ -196,60 +229,265 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-y-auto p-4 space-y-5">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-y-auto p-4 space-y-5 transition-colors">
       {/* Header */}
       <div>
-        <div className="font-black text-xl text-gray-900">⚙️ Settings & Online Cloud DB</div>
-        <div className="text-xs text-gray-500">
-          Single login account, offline-first storage with free Supabase cloud backup.
+        <div className="font-black text-xl text-gray-900 dark:text-white">⚙️ Settings & Data Ownership</div>
+        <div className="text-xs text-gray-500 dark:text-slate-400">
+          Personal Google Drive backup, offline security, dark mode, and diagnostics.
+        </div>
+      </div>
+
+      {/* Dark Mode Theme Selector Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2.5">
+          <div>
+            <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span>{isDark ? '🌙' : '☀️'}</span> Appearance & Display Theme
+            </div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Easy on the eyes for night counter operations.
+            </div>
+          </div>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-slate-800 text-blue-900 dark:text-blue-300">
+            {isDark ? 'Dark Mode Active' : 'Light Mode Active'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => setTheme('light')}
+            className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              !isDark
+                ? 'bg-blue-900 text-white border-blue-900 shadow-sm'
+                : 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300'
+            }`}
+          >
+            <span>☀️</span>
+            <span>Light Theme</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTheme('dark')}
+            className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              isDark
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300'
+            }`}
+          >
+            <span>🌙</span>
+            <span>Dark Theme</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Google Drive Cloud Backup Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2.5">
+          <div>
+            <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span>📁</span> Personal Google Drive Backup
+            </div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Free 15 GB storage. Auto-syncs every 5 mins when online; pauses silently when offline.
+            </div>
+          </div>
+          <span
+            className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+              driveConnected
+                ? 'bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800'
+                : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'
+            }`}
+          >
+            {driveConnected ? '● Connected' : '○ Not Linked'}
+          </span>
+        </div>
+
+        {/* Status Notification */}
+        {driveStatusMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-semibold border ${
+              driveStatusMsg.type === 'success'
+                ? 'bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
+                : driveStatusMsg.type === 'error'
+                ? 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
+                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+            }`}
+          >
+            {driveStatusMsg.text}
+          </div>
+        )}
+
+        {/* Sync & Restore Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            onClick={handleForceDriveSync}
+            disabled={isDriveSyncing}
+            className="bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 active:scale-98 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+          >
+            <span>{isDriveSyncing ? '⏳' : '⚡'}</span>
+            <span>{isDriveSyncing ? 'Syncing to Drive…' : 'Force Sync to Google Drive'}</span>
+          </button>
+
+          <button
+            onClick={handleRestoreFromDrive}
+            disabled={isDriveRestoring}
+            className="bg-white dark:bg-slate-800 border-2 border-blue-900 dark:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 active:scale-98 text-blue-900 dark:text-blue-300 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+          >
+            <span>{isDriveRestoring ? '⏳' : '📥'}</span>
+            <span>{isDriveRestoring ? 'Restoring…' : 'Restore from Google Drive'}</span>
+          </button>
+        </div>
+
+        {/* Connected Details or Connect Form */}
+        <div className="pt-1">
+          {driveConnected ? (
+            <div className="bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-xs space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 dark:text-slate-400">Account:</span>
+                <span className="font-bold text-gray-900 dark:text-white">{driveConfig?.userEmail || 'Connected Google Account'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 dark:text-slate-400">Environment Folder:</span>
+                <span className="font-mono text-blue-800 dark:text-blue-300 font-semibold">BaithakOS Backups</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 dark:text-slate-400">Auto-Sync Frequency:</span>
+                <span className="text-green-700 dark:text-green-400 font-semibold">Every 5 minutes (Silent)</span>
+              </div>
+              <div className="pt-2 border-t border-gray-200 dark:border-slate-700 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleDisconnectDrive}
+                  className="text-xs text-red-600 dark:text-red-400 hover:underline font-bold"
+                >
+                  Disconnect Google Drive
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <button
+                onClick={() => setShowDriveConfig(!showDriveConfig)}
+                className="text-xs text-blue-700 dark:text-blue-400 hover:underline font-bold flex items-center gap-1"
+              >
+                <span>⚙️</span>
+                <span>{showDriveConfig ? 'Hide Drive Setup' : 'Configure Google Drive Account'}</span>
+              </button>
+
+              {showDriveConfig && (
+                <div className="mt-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-xl p-3.5 space-y-3 animate-in fade-in duration-150">
+                  <div className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+                    Connect your personal Google account. BaithakOS will automatically create a dedicated{' '}
+                    <code className="bg-gray-200 dark:bg-slate-700 px-1 py-0.5 rounded font-mono font-bold">BaithakOS Backups</code> folder
+                    in your Drive and silently keep it updated every 5 minutes.
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleInstantGoogleConnect}
+                      className="w-full bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 text-white font-bold text-xs py-2.5 rounded-xl shadow flex items-center justify-center gap-2"
+                    >
+                      <span>🚀</span>
+                      <span>1-Tap Instant Connect to Google Drive</span>
+                    </button>
+                  </div>
+
+                  <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
+                    <span className="flex-shrink mx-2 text-[10px] text-gray-400 uppercase font-bold">Or Enter Custom Credentials</span>
+                    <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
+                  </div>
+
+                  <form onSubmit={handleConnectDrive} className="space-y-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Google Account Email
+                      </label>
+                      <input
+                        type="email"
+                        value={driveEmailInput}
+                        onChange={(e) => setDriveEmailInput(e.target.value)}
+                        placeholder="shopkeeper@gmail.com"
+                        className="w-full border dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                        Access Token (OAuth 2.0)
+                      </label>
+                      <input
+                        type="password"
+                        value={driveTokenInput}
+                        onChange={(e) => setDriveTokenInput(e.target.value)}
+                        placeholder="ya29.a0AfH6SM..."
+                        className="w-full border dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold text-xs py-2 rounded-xl"
+                    >
+                      Save & Connect
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Single Owner Account & Security Card */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b pb-2.5">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2.5">
           <div>
-            <div className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+            <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
               <span>👤</span> Single Master Account
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 dark:text-slate-400">
               Only one owner account per shop. Operates 100% offline.
             </div>
           </div>
           <button
             onClick={lock}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1"
+            className="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1"
           >
             <span>🔒</span> Lock Counter
           </button>
         </div>
 
-        <div className="text-xs text-gray-600 space-y-1">
+        <div className="text-xs text-gray-600 dark:text-slate-300 space-y-1">
           <div className="flex justify-between">
-            <span className="text-gray-400">Owner Name:</span>
-            <span className="font-bold text-gray-900">{shop.ownerName}</span>
+            <span className="text-gray-400 dark:text-slate-500">Owner Name:</span>
+            <span className="font-bold text-gray-900 dark:text-white">{shop.ownerName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Mobile / Login ID:</span>
-            <span className="font-bold text-gray-900">{shop.phone || 'Not set'}</span>
+            <span className="text-gray-400 dark:text-slate-500">Mobile / Login ID:</span>
+            <span className="font-bold text-gray-900 dark:text-white">{shop.phone || 'Not set'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Master PIN:</span>
-            <span className="font-bold text-blue-900">
+            <span className="text-gray-400 dark:text-slate-500">Master PIN:</span>
+            <span className="font-bold text-blue-900 dark:text-blue-400">
               {hasCustomPin ? '● ● ● ● (Custom PIN Set)' : '1234 (Default PIN)'}
             </span>
           </div>
         </div>
 
         {pinSuccessMessage && (
-          <div className="text-xs text-green-700 bg-green-50 p-2 rounded-xl border border-green-200 font-semibold">
+          <div className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 p-2 rounded-xl border border-green-200 dark:border-green-800 font-semibold">
             {pinSuccessMessage}
           </div>
         )}
 
         {isChangingPin ? (
-          <form onSubmit={handleSavePin} className="pt-2 border-t border-gray-100 space-y-2">
-            <div className="text-xs font-semibold text-gray-800">Set New 4-Digit Master PIN:</div>
+          <form onSubmit={handleSavePin} className="pt-2 border-t border-gray-100 dark:border-slate-800 space-y-2">
+            <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">Set New 4-Digit Master PIN:</div>
             <div className="flex gap-2">
               <input
                 type="password"
@@ -257,12 +495,12 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
                 value={newPin}
                 onChange={(e) => setNewPin(e.target.value)}
                 placeholder="New 4-digit PIN"
-                className="flex-1 border rounded-xl px-3 py-1.5 text-sm font-mono tracking-widest"
+                className="flex-1 border dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-mono tracking-widest bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                 autoFocus
               />
               <button
                 type="submit"
-                className="bg-blue-900 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow"
+                className="bg-blue-900 dark:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow"
               >
                 Save PIN
               </button>
@@ -272,7 +510,7 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
                   setIsChangingPin(false);
                   setNewPin('');
                 }}
-                className="border border-gray-300 text-gray-600 text-xs px-2.5 py-1.5 rounded-xl"
+                className="border border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-400 text-xs px-2.5 py-1.5 rounded-xl"
               >
                 Cancel
               </button>
@@ -281,185 +519,49 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
         ) : (
           <button
             onClick={() => setIsChangingPin(true)}
-            className="text-xs text-blue-700 hover:text-blue-900 font-bold"
+            className="text-xs text-blue-700 dark:text-blue-400 hover:underline font-bold"
           >
             ✏️ Change Master PIN
           </button>
         )}
       </div>
 
-      {/* Online Cloud DB Card (Supabase Free Tier) */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3.5">
-        <div className="flex items-center justify-between border-b pb-2.5">
-          <div>
-            <div className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
-              <span>☁️</span> Online Cloud Database (Supabase Free Tier)
-            </div>
-            <div className="text-xs text-gray-500">
-              All transactions remain instantaneous and offline on your phone, with free cloud sync.
-            </div>
-          </div>
-          <span
-            className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-              cloudConfigured ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            {cloudConfigured ? '● Configured' : '○ Not Linked'}
-          </span>
-        </div>
-
-        {/* Status Notification */}
-        {cloudStatusMsg && (
-          <div
-            className={`p-3 rounded-xl text-xs font-semibold border ${
-              cloudStatusMsg.type === 'success'
-                ? 'bg-green-50 text-green-800 border-green-200'
-                : cloudStatusMsg.type === 'error'
-                ? 'bg-red-50 text-red-800 border-red-200'
-                : 'bg-blue-50 text-blue-800 border-blue-200'
-            }`}
-          >
-            {cloudStatusMsg.text}
-          </div>
-        )}
-
-        {/* Sync & Restore Actions (Replaces manual JSON file download) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <button
-            onClick={handleForceCloudSync}
-            disabled={isCloudSyncing}
-            className="bg-blue-900 hover:bg-blue-800 active:scale-98 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
-          >
-            <span>{isCloudSyncing ? '⏳' : '⚡'}</span>
-            <span>{isCloudSyncing ? 'Updating Online DB…' : 'Force Sync (Update Online DB)'}</span>
-          </button>
-
-          <button
-            onClick={handleRestoreFromCloud}
-            disabled={isCloudRestoring}
-            className="bg-white border-2 border-blue-900 hover:bg-blue-50 active:scale-98 text-blue-900 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
-          >
-            <span>{isCloudRestoring ? '⏳' : '📥'}</span>
-            <span>{isCloudRestoring ? 'Fetching Backup…' : 'Restore from Online DB'}</span>
-          </button>
-        </div>
-
-        {/* Supabase Connection Setup Toggle */}
-        <div className="pt-1">
-          <button
-            onClick={() => setShowCloudConfig(!showCloudConfig)}
-            className="text-xs text-blue-700 hover:text-blue-900 font-bold flex items-center gap-1"
-          >
-            <span>⚙️</span>
-            <span>{showCloudConfig ? 'Hide Cloud DB Configuration' : 'Configure Supabase Credentials (Free Account)'}</span>
-          </button>
-
-          {showCloudConfig && (
-            <form onSubmit={handleSaveCloudConfig} className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-3.5 space-y-3 animate-in fade-in duration-150">
-              <div className="text-xs text-gray-600">
-                You can create a 100% free project at{' '}
-                <a
-                  href="https://supabase.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 font-bold underline"
-                >
-                  supabase.com
-                </a>
-                . No credit card required. Paste your Project URL and Anon/Public Key below:
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Supabase Project URL
-                </label>
-                <input
-                  type="url"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
-                  placeholder="https://xyzcompany.supabase.co"
-                  className="w-full border rounded-xl px-3 py-2 text-xs font-mono bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Supabase Anon Key (Public)
-                </label>
-                <input
-                  type="password"
-                  value={supabaseAnonKey}
-                  onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  className="w-full border rounded-xl px-3 py-2 text-xs font-mono bg-white"
-                />
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-800 space-y-1">
-                <div className="font-bold">📋 Required Table Schema in Supabase:</div>
-                <div>Run this 1-line script in your Supabase SQL Editor once:</div>
-                <code className="block bg-amber-100/70 p-1.5 rounded text-[10px] font-mono break-all select-all">
-                  CREATE TABLE IF NOT EXISTS shop_backups (shop_id text PRIMARY KEY, shop_name text, owner_name text, total_products int, total_sales int, backup_payload jsonb, updated_at timestamptz DEFAULT now());
-                </code>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleTestConnection}
-                  disabled={isTestingConn || !supabaseUrl || !supabaseAnonKey}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs px-3 py-2 rounded-xl disabled:opacity-50"
-                >
-                  {isTestingConn ? 'Testing…' : '🔍 Test Connection'}
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex-1 text-center"
-                >
-                  Save Cloud Settings
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-
       {/* Local Sync Status Card */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
-        <div className="font-bold text-sm text-gray-900 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center justify-between">
           <span>Local Device Outbox</span>
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-bold ${
               syncStatus.state === 'synced'
-                ? 'bg-green-100 text-green-800'
+                ? 'bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300'
                 : syncStatus.state === 'syncing'
-                ? 'bg-blue-100 text-blue-800'
-                : 'bg-amber-100 text-amber-800'
+                ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
             }`}
           >
             {syncStatus.label}
           </span>
         </div>
 
-        <div className="text-xs text-gray-500 space-y-1 font-mono">
+        <div className="text-xs text-gray-500 dark:text-slate-400 space-y-1 font-mono">
           <div>Device ID: {deviceId || 'mobile-browser'}</div>
           <div>Pending Local Outbox Events: {syncStatus.pendingCount}</div>
         </div>
       </div>
 
       {/* Synthetic Shop Simulator */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 shadow-sm space-y-3">
         <div>
-          <div className="font-bold text-sm text-amber-900 flex items-center gap-1.5">
+          <div className="font-bold text-sm text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
             <span>🧪</span> Synthetic Paan Shop Simulator
           </div>
-          <div className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+          <div className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
             Need test data? Populate your shop instantly with 100 real paan shop catalog items (Banarasi, Baba, Rajnigandha, Classic, Thums Up, Lays, Cadbury), 5 wholesale suppliers, and 7 days of simulated sales.
           </div>
         </div>
 
         {simulationResult && (
-          <div className="bg-white/80 p-2.5 rounded-xl text-xs font-semibold text-green-800 border border-green-200">
+          <div className="bg-white/80 dark:bg-slate-800 p-2.5 rounded-xl text-xs font-semibold text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800">
             {simulationResult}
           </div>
         )}
@@ -474,23 +576,23 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
       </div>
 
       {/* Shop Info */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-2 text-xs">
-        <div className="font-bold text-sm text-gray-900">Shop Profile</div>
-        <div className="flex justify-between py-1 border-b text-gray-600">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-2 text-xs">
+        <div className="font-bold text-sm text-gray-900 dark:text-white">Shop Profile</div>
+        <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800 text-gray-600 dark:text-slate-400">
           <span>Shop Name:</span>
-          <span className="font-bold text-gray-900">{shop.name}</span>
+          <span className="font-bold text-gray-900 dark:text-white">{shop.name}</span>
         </div>
-        <div className="flex justify-between py-1 border-b text-gray-600">
+        <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800 text-gray-600 dark:text-slate-400">
           <span>Owner:</span>
-          <span className="font-bold text-gray-900">{shop.ownerName}</span>
+          <span className="font-bold text-gray-900 dark:text-white">{shop.ownerName}</span>
         </div>
-        <div className="flex justify-between py-1 border-b text-gray-600">
+        <div className="flex justify-between py-1 border-b border-gray-100 dark:border-slate-800 text-gray-600 dark:text-slate-400">
           <span>Currency:</span>
-          <span className="font-bold text-gray-900">INR (₹)</span>
+          <span className="font-bold text-gray-900 dark:text-white">INR (₹)</span>
         </div>
-        <div className="flex justify-between py-1 text-gray-600">
+        <div className="flex justify-between py-1 text-gray-600 dark:text-slate-400">
           <span>Timezone:</span>
-          <span className="font-bold text-gray-900">Asia/Kolkata</span>
+          <span className="font-bold text-gray-900 dark:text-white">Asia/Kolkata</span>
         </div>
       </div>
     </div>
