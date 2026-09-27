@@ -340,10 +340,14 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
 
       {/* Add Product Modal */}
       {showAddProduct && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddProduct(false)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateProduct}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl"
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
           >
             <div className="font-bold text-lg text-gray-900 border-b pb-2">Add New Product</div>
             <input
@@ -408,10 +412,14 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
 
       {/* Add Supplier Modal */}
       {showAddSupplier && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddSupplier(false)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateSupplier}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl"
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
           >
             <div className="font-bold text-lg text-gray-900 border-b pb-2">Add Supplier</div>
             <input
@@ -465,10 +473,14 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
 
       {/* Stock Adjustment Modal */}
       {adjustingProduct && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div
+          onClick={() => setAdjustingProduct(null)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleStockAdjustment}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl"
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
           >
             <div className="font-bold text-lg text-gray-900 border-b pb-2">
               Adjust Stock: {adjustingProduct.name}

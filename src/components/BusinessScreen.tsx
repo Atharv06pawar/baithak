@@ -408,10 +408,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
       {/* Record Expense Modal */}
       {showAddExpense && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddExpense(false)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateExpense}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl"
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
           >
             <div className="font-bold text-lg text-gray-900 border-b pb-2">Record Shop Expense</div>
             <input
@@ -483,10 +487,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
       {/* Add Customer Modal */}
       {showAddCustomer && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddCustomer(false)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateCustomer}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl"
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
           >
             <div className="font-bold text-lg text-gray-900 border-b pb-2">Add Udhaar Customer</div>
             <input
@@ -525,10 +533,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
       {/* Customer Payment Modal */}
       {payingCustomer && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div
+          onClick={() => setPayingCustomer(null)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={handleCustomerPayment}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl"
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
           >
             <div className="font-bold text-lg text-gray-900 border-b pb-2">
               Receive Payment: {payingCustomer.name}
@@ -566,8 +578,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
       {/* Customer Statement / Ledger Modal */}
       {viewingCustomer && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-3 shadow-xl max-h-[85vh] flex flex-col">
+        <div
+          onClick={() => setViewingCustomer(null)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-5 space-y-3 shadow-xl max-h-[85vh] flex flex-col cursor-default"
+          >
             <div className="flex justify-between items-center border-b pb-2">
               <div>
                 <div className="font-bold text-base text-gray-900">{viewingCustomer.name}</div>

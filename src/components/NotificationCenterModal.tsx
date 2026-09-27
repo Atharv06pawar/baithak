@@ -113,8 +113,14 @@ export default function NotificationCenterModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-3 sm:p-4">
-        <div className="bg-white rounded-2xl max-w-lg w-full max-h-[92dvh] flex flex-col shadow-2xl animate-in fade-in duration-200 overflow-hidden">
+      <div
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-3 sm:p-4 cursor-pointer"
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white rounded-2xl max-w-lg w-full max-h-[92dvh] flex flex-col shadow-2xl animate-in fade-in duration-200 overflow-hidden cursor-default"
+        >
           {/* Header */}
           <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
             <div className="flex items-center gap-2.5">

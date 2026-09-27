@@ -495,8 +495,14 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
 
       {/* Digital Receipt Modal */}
       {completedSale && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in duration-200">
+        <div
+          onClick={() => setCompletedSale(null)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in duration-200 cursor-default"
+          >
             <div className="text-center border-b pb-3">
               <div className="text-4xl mb-1">🧾</div>
               <div className="font-black text-xl text-gray-900">Sale Complete</div>
