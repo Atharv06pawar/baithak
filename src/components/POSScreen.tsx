@@ -3,9 +3,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getProducts } from '@/lib/domain/product';
 import { createSale } from '@/lib/domain/sale';
-import { getCustomers, createCustomer, type CustomerWithBalance } from '@/lib/domain/customer';
+import {
+  getCustomers,
+  createCustomer,
+  updateCustomerPhone,
+  formatUdhaarReceiptMessage,
+  buildWhatsAppUrl,
+  type CustomerWithBalance,
+} from '@/lib/domain/customer';
 import { formatMoney, multiplyMoney, sumMoney, toPaise } from '@/lib/money';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
+import { useShop } from '@/contexts/ShopContext';
 import type { SaleItemInput } from '@/lib/domain/sale';
 import type { Product, Sale, UUID } from '@/lib/types';
 
@@ -14,7 +22,16 @@ interface CartItem {
   quantity: number;
 }
 
+interface CompletedSaleState {
+  sale: Sale;
+  items: CartItem[];
+  customer?: CustomerWithBalance;
+  previousBalance?: number;
+  newBalance?: number;
+}
+
 export default function POSScreen({ shopId }: { shopId: UUID }) {
+  const { shop } = useShop();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<CustomerWithBalance[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -22,11 +39,14 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'udhaar'>('cash');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [quickPhoneInput, setQuickPhoneInput] = useState('');
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [cashReceived, setCashReceived] = useState('');
   const [discountRupees, setDiscountRupees] = useState('');
   const [status, setStatus] = useState<'idle' | 'completing' | 'error'>('idle');
-  const [completedSale, setCompletedSale] = useState<{ sale: Sale; items: CartItem[] } | null>(null);
+  const [completedSale, setCompletedSale] = useState<CompletedSaleState | null>(null);
+  const [whatsAppSent, setWhatsAppSent] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
@@ -110,15 +130,81 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
   const change = Math.max(0, cashReceivedPaise - total);
 
   async function handleCreateQuickCustomer() {
-    if (!newCustomerName.trim()) return;
+    if (!newCustomerName.trim()) {
+      setErrorMsg('Customer name is required');
+      return;
+    }
+    const cleanPhone = newCustomerPhone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setErrorMsg('Valid 10-digit mobile number is required for WhatsApp Khata receipts');
+      return;
+    }
+
     try {
-      const created = await createCustomer({ shopId, name: newCustomerName.trim() });
-      setCustomers((prev) => [...prev, { ...created, currentBalance: 0 }]);
+      const created = await createCustomer({
+        shopId,
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim(),
+      });
+      const withBal: CustomerWithBalance = { ...created, currentBalance: 0 };
+      setCustomers((prev) => [...prev, withBal]);
       setSelectedCustomerId(created.id);
       setNewCustomerName('');
+      setNewCustomerPhone('');
       setShowAddCustomer(false);
+      setErrorMsg('');
     } catch (err) {
       console.error('Failed to create customer:', err);
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to add customer');
+    }
+  }
+
+  async function handleSaveCustomerPhone(customerId: UUID, phone: string) {
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number');
+      return;
+    }
+    try {
+      const updated = await updateCustomerPhone(shopId, customerId, phone.trim());
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === customerId ? { ...c, phone: updated.phone } : c))
+      );
+      if (completedSale?.customer?.id === customerId) {
+        const updatedSaleData: CompletedSaleState = {
+          ...completedSale,
+          customer: { ...completedSale.customer, phone: updated.phone },
+        };
+        setCompletedSale(updatedSaleData);
+        handleSendWhatsApp(updatedSaleData);
+      }
+      setQuickPhoneInput('');
+    } catch (err) {
+      alert('Failed to update phone: ' + (err instanceof Error ? err.message : 'Error'));
+    }
+  }
+
+  function handleSendWhatsApp(saleData: CompletedSaleState) {
+    if (!saleData.customer?.phone) return;
+    const msg = formatUdhaarReceiptMessage({
+      customerName: saleData.customer.name,
+      shopName: shop?.name || 'Baithak Paan Shop',
+      billNumber: saleData.sale.saleNumber,
+      date: new Date(saleData.sale.createdAt),
+      items: saleData.items.map((i) => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        lineTotal: multiplyMoney(i.product.sellingPrice, i.quantity),
+      })),
+      purchaseAmount: saleData.sale.total,
+      previousBalance: saleData.previousBalance ?? 0,
+      newBalance: saleData.newBalance ?? saleData.sale.total,
+    });
+
+    const url = buildWhatsAppUrl(saleData.customer.phone, msg);
+    if (url) {
+      window.open(url, '_blank');
+      setWhatsAppSent(true);
     }
   }
 
@@ -140,6 +226,12 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
         unitPrice: i.product.sellingPrice,
       }));
 
+      const selectedCust =
+        paymentMethod === 'udhaar'
+          ? customers.find((c) => c.id === selectedCustomerId)
+          : undefined;
+      const prevBal = selectedCust ? selectedCust.currentBalance : 0;
+
       const result = await createSale({
         shopId,
         paymentMethod,
@@ -150,7 +242,17 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
           paymentMethod === 'cash' && cashReceived ? cashReceivedPaise : undefined,
       });
 
-      setCompletedSale({ sale: result.sale, items: [...cart] });
+      const newBal = prevBal + result.sale.total;
+      const saleData: CompletedSaleState = {
+        sale: result.sale,
+        items: [...cart],
+        customer: selectedCust,
+        previousBalance: prevBal,
+        newBalance: newBal,
+      };
+
+      setCompletedSale(saleData);
+      setWhatsAppSent(false);
       setCart([]);
       setIsMobileCartOpen(false);
       setCashReceived('');
@@ -419,34 +521,94 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                   </div>
 
                   {showAddCustomer ? (
-                    <div className="flex gap-1.5 mt-1">
+                    <div className="space-y-1.5 p-2 bg-white rounded-xl border border-amber-200">
+                      <div className="text-[11px] font-bold text-gray-800">New Khata Member:</div>
                       <input
                         type="text"
                         value={newCustomerName}
                         onChange={(e) => setNewCustomerName(e.target.value)}
-                        placeholder="Customer Name"
-                        className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm bg-white"
+                        placeholder="Customer Full Name *"
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-900"
                       />
-                      <button
-                        onClick={handleCreateQuickCustomer}
-                        className="bg-blue-900 text-white text-xs px-3 py-1 rounded-lg font-bold"
-                      >
-                        Add
-                      </button>
+                      <input
+                        type="tel"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                        placeholder="Mobile / WhatsApp No (e.g. 9876543210) *"
+                        maxLength={15}
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-900"
+                      />
+                      <div className="flex gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddCustomer(false);
+                            setNewCustomerName('');
+                            setNewCustomerPhone('');
+                          }}
+                          className="flex-1 border border-gray-300 text-gray-600 font-bold text-xs py-1.5 rounded-lg bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateQuickCustomer}
+                          className="flex-1 bg-blue-900 text-white font-bold text-xs py-1.5 rounded-lg shadow-sm"
+                        >
+                          Add & Select
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <select
-                      value={selectedCustomerId}
-                      onChange={(e) => setSelectedCustomerId(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white text-gray-800"
-                    >
-                      <option value="">-- Choose Customer --</option>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} (Khata: {formatMoney(c.currentBalance)})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="space-y-1.5">
+                      <select
+                        value={selectedCustomerId}
+                        onChange={(e) => setSelectedCustomerId(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white text-gray-800 font-medium"
+                      >
+                        <option value="">-- Choose Customer --</option>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} {c.phone ? `(${c.phone})` : '(No phone)'} — Due: {formatMoney(c.currentBalance)}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Phone prompt if selected customer has no mobile number */}
+                      {selectedCustomerId &&
+                        (() => {
+                          const cust = customers.find((c) => c.id === selectedCustomerId);
+                          if (!cust) return null;
+                          if (!cust.phone) {
+                            return (
+                              <div className="text-[11px] text-amber-900 bg-amber-100/80 p-2 rounded-lg space-y-1">
+                                <div className="font-semibold">⚠️ No mobile number saved for {cust.name}.</div>
+                                <div className="flex gap-1">
+                                  <input
+                                    type="tel"
+                                    placeholder="Enter 10-digit mobile"
+                                    value={quickPhoneInput}
+                                    onChange={(e) => setQuickPhoneInput(e.target.value)}
+                                    className="flex-1 border border-amber-300 rounded px-2 py-0.5 text-xs bg-white"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveCustomerPhone(cust.id, quickPhoneInput)}
+                                    className="bg-amber-800 text-white font-bold px-2.5 py-0.5 rounded text-[11px]"
+                                  >
+                                    Save Phone
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="text-[11px] text-green-700 flex items-center gap-1 font-medium">
+                              <span>✓ WhatsApp receipt will be sent to {cust.phone}</span>
+                            </div>
+                          );
+                        })()}
+                    </div>
                   )}
                 </div>
               )}
@@ -529,14 +691,14 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
             {/* Summary */}
             <div className="space-y-1 text-xs">
               <div className="flex justify-between font-bold text-sm">
-                <span>Total Paid:</span>
+                <span>{completedSale.sale.paymentMethod === 'udhaar' ? 'Bill Amount:' : 'Total Paid:'}</span>
                 <span className="text-base text-blue-900">
                   {formatMoney(completedSale.sale.total)}
                 </span>
               </div>
               <div className="flex justify-between text-gray-500 capitalize">
-                <span>Payment:</span>
-                <span>{completedSale.sale.paymentMethod}</span>
+                <span>Payment Method:</span>
+                <span className="font-semibold text-gray-800">{completedSale.sale.paymentMethod}</span>
               </div>
               {(completedSale.sale.changeGiven ?? 0) > 0 && (
                 <div className="flex justify-between font-bold text-green-700">
@@ -545,6 +707,69 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                 </div>
               )}
             </div>
+
+            {/* Udhaar Khata Customer Summary & 1-Tap WhatsApp */}
+            {completedSale.sale.paymentMethod === 'udhaar' && completedSale.customer && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between font-bold text-amber-900 border-b border-amber-200 pb-1.5">
+                  <span>📖 Khata (Udhaar) Updated</span>
+                  <span className="font-semibold text-gray-700">{completedSale.customer.name}</span>
+                </div>
+
+                <div className="space-y-1 text-gray-700">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Pichla Baaki (Previous Balance):</span>
+                    <span className="font-semibold">{formatMoney(completedSale.previousBalance ?? 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-blue-900 font-bold">
+                    <span>Is Bill Ka Udhaar (This Purchase):</span>
+                    <span>+{formatMoney(completedSale.sale.total)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-amber-200 pt-1 font-black text-red-600 text-sm">
+                    <span>Kul Naya Baaki (Total Due Now):</span>
+                    <span>{formatMoney(completedSale.newBalance ?? completedSale.sale.total)}</span>
+                  </div>
+                </div>
+
+                {/* WhatsApp Action */}
+                {completedSale.customer.phone ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSendWhatsApp(completedSale)}
+                    className="w-full mt-2 bg-green-600 hover:bg-green-700 active:scale-98 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition-transform"
+                  >
+                    <span>💬</span>
+                    <span>
+                      {whatsAppSent
+                        ? '✓ WhatsApp Sent (Tap to Resend)'
+                        : `Send WhatsApp Receipt to ${completedSale.customer.name}`}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="mt-2 space-y-1.5 pt-1 border-t border-amber-200">
+                    <div className="text-[11px] font-semibold text-amber-900">
+                      ⚠️ Mobile number not saved. Enter number to send WhatsApp receipt:
+                    </div>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="tel"
+                        value={quickPhoneInput}
+                        onChange={(e) => setQuickPhoneInput(e.target.value)}
+                        placeholder="10-digit mobile number"
+                        className="flex-1 border border-amber-300 rounded-lg px-2 py-1 text-xs bg-white text-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveCustomerPhone(completedSale.customer!.id, quickPhoneInput)}
+                        className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-sm"
+                      >
+                        Save & Send
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-2 pt-2">
               <button

@@ -5,7 +5,7 @@
 import { getDB } from '@/lib/db';
 import { appendToOutbox } from '@/lib/sync/outbox';
 import { getDeviceId } from '@/lib/device';
-import { assertPaise, addMoney } from '@/lib/money';
+import { assertPaise, addMoney, formatMoney } from '@/lib/money';
 import type { Customer, CustomerLedgerEntry, LedgerEntryType, UUID } from '@/lib/types';
 
 export interface CreateCustomerInput {
@@ -173,4 +173,140 @@ export async function recordCustomerPayment(
     amount: -amountPaidPaise,
     note: note || 'Payment received',
   });
+}
+
+/** Update customer phone number for WhatsApp receipts */
+export async function updateCustomerPhone(
+  shopId: UUID,
+  customerId: UUID,
+  phone: string
+): Promise<Customer> {
+  const db = getDB();
+  const customer = await db.customers.get(customerId);
+  if (!customer) throw new Error('Customer not found');
+  if (customer.shopId !== shopId) throw new Error('Unauthorized');
+
+  const updated: Customer = {
+    ...customer,
+    phone: phone.trim(),
+    updatedAt: Date.now(),
+  };
+
+  await db.transaction('rw', [db.customers, db.sync_outbox], async () => {
+    await db.customers.put(updated);
+    await appendToOutbox({
+      db,
+      shopId,
+      entityType: 'customer',
+      entityId: customerId,
+      operation: 'update',
+      payload: { customer: updated },
+    });
+  });
+
+  return updated;
+}
+
+/** Build WhatsApp wa.me URL with 91 country code prefix */
+export function buildWhatsAppUrl(phone: string | undefined, message: string): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+  const fullPhone = digits.length === 10 ? `91${digits}` : digits;
+  return `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
+}
+
+export interface UdhaarReceiptMessageInput {
+  customerName: string;
+  shopName: string;
+  billNumber: number;
+  date?: Date;
+  items?: { name: string; quantity: number; lineTotal: number }[];
+  purchaseAmount: number; // paise
+  previousBalance: number; // paise
+  newBalance: number; // paise
+}
+
+/**
+ * Format complete Udhaar purchase WhatsApp receipt showing:
+ * - Shop name & Bill number
+ * - Purchased items list
+ * - New bill amount
+ * - Previous balance
+ * - Total new balance
+ */
+export function formatUdhaarReceiptMessage(input: UdhaarReceiptMessageInput): string {
+  const dateStr = (input.date || new Date()).toLocaleString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const lines = [
+    `🧾 *${input.shopName} — Udhaar Parchee*`,
+    `--------------------------------`,
+    `👤 *Grahak:* ${input.customerName}`,
+    `📅 *Date:* ${dateStr}`,
+    `🔢 *Bill No:* #${input.billNumber}`,
+  ];
+
+  if (input.items && input.items.length > 0) {
+    lines.push(`\n🛒 *Kharide Gaye Items:*`);
+    for (const item of input.items) {
+      lines.push(`• ${item.name} × ${item.quantity} = ${formatMoney(item.lineTotal)}`);
+    }
+  }
+
+  lines.push(
+    `--------------------------------`,
+    `➕ *Is Bill Ka Udhaar:* ${formatMoney(input.purchaseAmount)}`,
+    `📋 *Pichla Baaki (Previous):* ${formatMoney(input.previousBalance)}`,
+    `🔴 *Kul Naya Baaki (Total Due):* ${formatMoney(input.newBalance)}`,
+    `--------------------------------`,
+    `Dhanyawad! Kripya samay par chukta karein. 🙏`
+  );
+
+  return lines.join('\n');
+}
+
+export interface PaymentReceiptMessageInput {
+  customerName: string;
+  shopName: string;
+  date?: Date;
+  amountPaid: number; // paise
+  previousBalance: number; // paise
+  remainingBalance: number; // paise
+}
+
+/**
+ * Format payment received WhatsApp receipt showing:
+ * - Paid amount
+ * - Previous due
+ * - Remaining due
+ */
+export function formatPaymentReceiptMessage(input: PaymentReceiptMessageInput): string {
+  const dateStr = (input.date || new Date()).toLocaleString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  return [
+    `💳 *${input.shopName} — Payment Receipt*`,
+    `--------------------------------`,
+    `👤 *Grahak:* ${input.customerName}`,
+    `📅 *Date:* ${dateStr}`,
+    `--------------------------------`,
+    `✅ *Jama Rashi (Paid):* ${formatMoney(input.amountPaid)}`,
+    `📋 *Pichla Baaki (Previous Due):* ${formatMoney(input.previousBalance)}`,
+    `🟢 *Bacha Hua Baaki (Remaining):* ${formatMoney(input.remainingBalance)}`,
+    `--------------------------------`,
+    `Aapka payment safaltapoorvak prapt hua. Dhanyawad! 🙏`,
+  ].join('\n');
 }

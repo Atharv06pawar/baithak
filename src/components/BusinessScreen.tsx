@@ -2,16 +2,33 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { getExpenses, createExpense, type CreateExpenseInput } from '@/lib/domain/expense';
-import { getCustomers, createCustomer, recordCustomerPayment, getCustomerLedger, type CustomerWithBalance } from '@/lib/domain/customer';
+import {
+  getCustomers,
+  createCustomer,
+  recordCustomerPayment,
+  getCustomerLedger,
+  buildWhatsAppUrl,
+  formatPaymentReceiptMessage,
+  type CustomerWithBalance,
+} from '@/lib/domain/customer';
 import { generateCashReconciliation, type CashReconciliationReport } from '@/lib/domain/reconciliation';
 import { getDayOverview, closeDay, type DayOverview } from '@/lib/domain/closing';
 import { toPaise, formatMoney } from '@/lib/money';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
+import { useShop } from '@/contexts/ShopContext';
 import type { Expense, CustomerLedgerEntry, ExpenseCategory, UUID } from '@/lib/types';
 
 type BusinessTab = 'expenses' | 'udhaar' | 'reconciliation' | 'closing';
 
+interface PaymentReceiptState {
+  customer: CustomerWithBalance;
+  amountPaid: number;
+  previousBalance: number;
+  remainingBalance: number;
+}
+
 export default function BusinessScreen({ shopId }: { shopId: UUID }) {
+  const { shop } = useShop();
   const [activeTab, setActiveTab] = useState<BusinessTab>('udhaar');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [customers, setCustomers] = useState<CustomerWithBalance[]>([]);
@@ -25,12 +42,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
   const [payingCustomer, setPayingCustomer] = useState<CustomerWithBalance | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<CustomerWithBalance | null>(null);
   const [customerLedgerEntries, setCustomerLedgerEntries] = useState<CustomerLedgerEntry[]>([]);
+  const [paymentReceipt, setPaymentReceipt] = useState<PaymentReceiptState | null>(null);
 
   // Mobile Back Button handlers: close open modals/sheets before exiting app
   useMobileBackHandler(showAddExpense, () => setShowAddExpense(false), 'biz_add_expense');
   useMobileBackHandler(showAddCustomer, () => setShowAddCustomer(false), 'biz_add_customer');
   useMobileBackHandler(!!payingCustomer, () => setPayingCustomer(null), 'biz_pay_customer');
   useMobileBackHandler(!!viewingCustomer, () => setViewingCustomer(null), 'biz_view_customer');
+  useMobileBackHandler(!!paymentReceipt, () => setPaymentReceipt(null), 'biz_payment_receipt');
 
   // Expense form
   const [expAmount, setExpAmount] = useState('');
@@ -82,7 +101,15 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
   async function handleCreateCustomer(e: React.FormEvent) {
     e.preventDefault();
-    if (!custName.trim()) return;
+    if (!custName.trim()) {
+      alert('Customer name is required');
+      return;
+    }
+    const cleanPhone = custPhone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number for WhatsApp Khata receipts.');
+      return;
+    }
 
     await createCustomer({
       shopId,
@@ -102,16 +129,44 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
     const amt = parseFloat(paymentAmount);
     if (!amt || amt <= 0) return;
 
+    const paidPaise = toPaise(amt);
+    const prevBal = payingCustomer.currentBalance;
+    const remBal = Math.max(0, prevBal - paidPaise);
+
     await recordCustomerPayment(
       shopId,
       payingCustomer.id,
-      toPaise(amt),
+      paidPaise,
       'Counter payment received'
     );
+
+    const receipt: PaymentReceiptState = {
+      customer: payingCustomer,
+      amountPaid: paidPaise,
+      previousBalance: prevBal,
+      remainingBalance: remBal,
+    };
 
     setPayingCustomer(null);
     setPaymentAmount('');
     await loadData();
+    setPaymentReceipt(receipt);
+  }
+
+  function handleSendPaymentWhatsApp(receipt: PaymentReceiptState) {
+    if (!receipt.customer.phone) return;
+    const msg = formatPaymentReceiptMessage({
+      customerName: receipt.customer.name,
+      shopName: shop?.name || 'Baithak Paan Shop',
+      date: new Date(),
+      amountPaid: receipt.amountPaid,
+      previousBalance: receipt.previousBalance,
+      remainingBalance: receipt.remainingBalance,
+    });
+    const url = buildWhatsAppUrl(receipt.customer.phone, msg);
+    if (url) {
+      window.open(url, '_blank');
+    }
   }
 
   async function openCustomerStatement(customer: CustomerWithBalance) {
@@ -210,6 +265,20 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                           className="bg-green-600 hover:bg-green-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow-sm"
                         >
                           Pay
+                        </button>
+                      )}
+                      {c.phone && c.currentBalance > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const msg = `Namaste ${c.name} ji, ${shop?.name || 'Baithak Paan Shop'} se aapka kul udhaar baaki ${formatMoney(c.currentBalance)} hai. Kripya samay par chukta karein. Dhanyawad! 🙏`;
+                            const url = buildWhatsAppUrl(c.phone, msg);
+                            if (url) window.open(url, '_blank');
+                          }}
+                          title="Send WhatsApp Khata Reminder"
+                          className="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs px-2 py-1.5 rounded-lg font-bold flex items-center"
+                        >
+                          <span>💬</span>
                         </button>
                       )}
                       <button
@@ -501,7 +570,7 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               type="text"
               value={custName}
               onChange={(e) => setCustName(e.target.value)}
-              placeholder="Customer Name *"
+              placeholder="Customer Full Name *"
               required
               className="w-full border rounded-xl px-3 py-2 text-sm"
             />
@@ -509,9 +578,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               type="tel"
               value={custPhone}
               onChange={(e) => setCustPhone(e.target.value)}
-              placeholder="Mobile Number"
+              placeholder="Mobile / WhatsApp Number (10 digits) *"
+              required
+              maxLength={15}
               className="w-full border rounded-xl px-3 py-2 text-sm"
             />
+            <div className="text-[11px] text-gray-500">
+              📱 Mobile number is used to send automated WhatsApp Udhaar receipts and balance updates.
+            </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -573,6 +647,61 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Payment Receipt Modal */}
+      {paymentReceipt && (
+        <div
+          onClick={() => setPaymentReceipt(null)}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl cursor-default animate-in fade-in"
+          >
+            <div className="text-center border-b pb-3">
+              <div className="text-3xl mb-1">✅</div>
+              <div className="font-bold text-lg text-gray-900">Payment Recorded</div>
+              <div className="text-xs text-gray-500">{paymentReceipt.customer.name}</div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Jama Rashi (Paid):</span>
+                <span className="font-bold text-green-700">{formatMoney(paymentReceipt.amountPaid)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Pichla Baaki (Previous Due):</span>
+                <span className="font-semibold text-gray-700">{formatMoney(paymentReceipt.previousBalance)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-bold">
+                <span className="text-gray-700">Bacha Hua Baaki (Remaining):</span>
+                <span className={paymentReceipt.remainingBalance > 0 ? 'text-red-600' : 'text-green-700'}>
+                  {formatMoney(paymentReceipt.remainingBalance)}
+                </span>
+              </div>
+            </div>
+
+            {paymentReceipt.customer.phone && (
+              <button
+                type="button"
+                onClick={() => handleSendPaymentWhatsApp(paymentReceipt)}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow"
+              >
+                <span>💬</span>
+                <span>Send WhatsApp Payment Receipt</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setPaymentReceipt(null)}
+              className="w-full border border-gray-300 py-2 rounded-xl font-bold text-xs text-gray-700 hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
 
