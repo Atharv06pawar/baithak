@@ -26,6 +26,7 @@ import type {
   Device,
   DailySummary,
   AnalyticsSnapshot,
+  ShopTask,
 } from '@/lib/types';
 
 export class BaithakDB extends Dexie {
@@ -48,6 +49,7 @@ export class BaithakDB extends Dexie {
   devices!: Table<Device>;
   daily_summaries!: Table<DailySummary>;
   analytics_snapshots!: Table<AnalyticsSnapshot>;
+  tasks!: Table<ShopTask>;
 
   constructor() {
     super('BaithakOS');
@@ -72,6 +74,7 @@ export class BaithakDB extends Dexie {
       devices:             'id, shopId',
       daily_summaries:     'id, shopId, dateStr, status',
       analytics_snapshots: 'id, shopId, dateStr, snapshotType',
+      tasks:               'id, shopId, type, status, createdAt',
     });
   }
 }

@@ -320,3 +320,26 @@ export interface AnalyticsSnapshot {
   computedAt: Timestamp;
   createdAt: Timestamp;
 }
+
+// ─── Operational Tasks & Notifications ────────────────────────────────────────
+
+export type TaskType = 'low_stock' | 'khata_collection' | 'daily_closing';
+export type TaskStatus = 'pending' | 'completed';
+
+export interface ShopTask {
+  id: string; // e.g. "low_stock_<productId>" or "khata_<customerId>"
+  shopId: UUID;
+  type: TaskType;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  entityId?: string; // productId or customerId
+  recipientName?: string;
+  recipientPhone?: string;
+  suggestedMessage?: string; // pre-composed reviewable message
+  actionLabel?: string;
+  actionTab?: 'inventory' | 'business' | 'pos';
+  completedAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}

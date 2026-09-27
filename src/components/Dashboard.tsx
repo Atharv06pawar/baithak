@@ -9,7 +9,9 @@ import BusinessScreen from '@/components/BusinessScreen';
 import ActionCenterView from '@/components/ActionCenterView';
 import AskBaithakView from '@/components/AskBaithakView';
 import SettingsBackupView from '@/components/SettingsBackupView';
+import NotificationCenterModal from '@/components/NotificationCenterModal';
 import { syncEngine, type SyncEngineStatus } from '@/lib/sync/engine';
+import { getOperationalTasks } from '@/lib/domain/task';
 import { useShop } from '@/contexts/ShopContext';
 
 export type MainTab =
@@ -25,16 +27,30 @@ export default function Dashboard({ shop }: { shop: Shop }) {
   const { lock } = useShop();
   const [activeTab, setActiveTab] = useState<MainTab>('pos');
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.getStatus());
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [pendingNotificationCount, setPendingNotificationCount] = useState(0);
+
+  const refreshPendingCount = useCallback(async () => {
+    try {
+      const tasks = await getOperationalTasks(shop.id);
+      const pending = tasks.filter((t) => t.status === 'pending').length;
+      setPendingNotificationCount(pending);
+    } catch {
+      // non-blocking
+    }
+  }, [shop.id]);
 
   useEffect(() => {
-    // Start background sync listener
+    // Start background sync listener & task counter
     syncEngine.start();
     const unsub = syncEngine.subscribe((st) => setSyncStatus(st));
+    refreshPendingCount();
+
     return () => {
       unsub();
       syncEngine.stop();
     };
-  }, []);
+  }, [refreshPendingCount]);
 
   // Hardware Back Button: Tab Navigation History
   const navigateTab = useCallback((newTab: MainTab) => {
@@ -82,8 +98,24 @@ export default function Dashboard({ shop }: { shop: Shop }) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* In-App Operational Notification Bell */}
+          <button
+            onClick={() => setIsNotificationOpen(true)}
+            title="Shop Tasks & Notifications"
+            className="relative bg-white/10 hover:bg-white/20 active:scale-95 text-blue-100 text-xs px-2.5 py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 transition-transform"
+          >
+            <span className="text-sm leading-none">🔔</span>
+            {pendingNotificationCount > 0 ? (
+              <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full leading-tight min-w-[16px] text-center shadow-xs">
+                {pendingNotificationCount}
+              </span>
+            ) : (
+              <span className="hidden sm:inline text-[11px] text-blue-200">Tasks</span>
+            )}
+          </button>
+
           {/* Sync Status Badge */}
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-blue-100 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-blue-100 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
             <span
               className={`w-2 h-2 rounded-full ${
                 syncStatus.state === 'synced'
@@ -118,6 +150,21 @@ export default function Dashboard({ shop }: { shop: Shop }) {
         {activeTab === 'ai' && <AskBaithakView shopId={shop.id} />}
         {activeTab === 'settings' && <SettingsBackupView shop={shop} />}
       </main>
+
+      {/* In-App Operational Task & Notification Hub */}
+      <NotificationCenterModal
+        isOpen={isNotificationOpen}
+        onClose={() => {
+          setIsNotificationOpen(false);
+          refreshPendingCount();
+        }}
+        shopId={shop.id}
+        onNavigateTab={(tab) => {
+          if (tab === 'inventory') navigateTab('stock');
+          else if (tab === 'business') navigateTab('business');
+          else if (tab === 'pos') navigateTab('pos');
+        }}
+      />
 
       {/* Bottom Counter Bar Navigation - Strictly shrink-0 pinned to bottom of phone screen */}
       <nav className="shrink-0 bg-white border-t border-gray-200 flex justify-around shadow-lg select-none safe-bottom pb-1 z-30">
