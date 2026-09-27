@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getSales, getSaleWithItems, reverseSale } from '@/lib/domain/sale';
 import { formatMoney } from '@/lib/money';
+import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Sale, SaleItem, UUID } from '@/lib/types';
 
 export default function SaleHistory({ shopId }: { shopId: UUID }) {
@@ -12,6 +13,19 @@ export default function SaleHistory({ shopId }: { shopId: UUID }) {
   const [reversing, setReversing] = useState(false);
   const [reversalReason, setReversalReason] = useState('');
   const [showReversalPrompt, setShowReversalPrompt] = useState(false);
+
+  // Close reversal prompt or selected sale view on mobile back button
+  useMobileBackHandler(
+    !!selected,
+    () => {
+      if (showReversalPrompt) {
+        setShowReversalPrompt(false);
+      } else {
+        setSelected(null);
+      }
+    },
+    'sale_detail'
+  );
 
   const load = useCallback(async () => {
     setLoading(true);

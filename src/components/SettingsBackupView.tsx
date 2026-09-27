@@ -1,29 +1,61 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { exportShopBackup, restoreShopBackup, downloadBackupJson, type ShopBackupData } from '@/lib/backup';
 import { syncEngine, type SyncEngineStatus } from '@/lib/sync/engine';
 import { getDeviceId } from '@/lib/device';
-import { getShopSettings } from '@/lib/domain/shop';
 import { runSyntheticShopSimulation } from '@/lib/simulator';
-import { toPaise, formatMoney } from '@/lib/money';
+import { formatMoney } from '@/lib/money';
 import { useShop } from '@/contexts/ShopContext';
-import type { Shop, UUID } from '@/lib/types';
+import {
+  getCloudCredentials,
+  saveCloudCredentials,
+  testCloudConnection,
+  cloudSyncPush,
+  cloudSyncPull,
+  isCloudConfigured,
+} from '@/lib/cloud/supabase';
+import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
+import type { Shop } from '@/lib/types';
 
 export default function SettingsBackupView({ shop }: { shop: Shop }) {
   const { refreshShop, changePin, lock, hasCustomPin } = useShop();
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.getStatus());
   const [deviceId, setDeviceId] = useState('');
-  const [isExporting, setIsExporting] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<string | null>(null);
+
+  // PIN state
   const [newPin, setNewPin] = useState('');
   const [pinSuccessMessage, setPinSuccessMessage] = useState('');
   const [isChangingPin, setIsChangingPin] = useState(false);
 
+  // Cloud DB state
+  const [cloudConfigured, setCloudConfigured] = useState(false);
+  const [showCloudConfig, setShowCloudConfig] = useState(false);
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
+  const [cloudStatusMsg, setCloudStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [isCloudRestoring, setIsCloudRestoring] = useState(false);
+  const [isTestingConn, setIsTestingConn] = useState(false);
+
+  // Intercept back button if cloud config modal is open
+  useMobileBackHandler(showCloudConfig, () => setShowCloudConfig(false), 'settings_cloud_config');
+
   useEffect(() => {
     setDeviceId(getDeviceId());
     const unsub = syncEngine.subscribe((st) => setSyncStatus(st));
+
+    // Load initial cloud credentials
+    const creds = getCloudCredentials();
+    if (creds) {
+      setSupabaseUrl(creds.supabaseUrl);
+      setSupabaseAnonKey(creds.supabaseAnonKey);
+      setCloudConfigured(true);
+    } else {
+      setCloudConfigured(false);
+    }
+
     return () => unsub();
   }, []);
 
@@ -40,39 +72,102 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
     setTimeout(() => setPinSuccessMessage(''), 3000);
   }
 
-  async function handleExport() {
-    setIsExporting(true);
+  async function handleSaveCloudConfig(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabaseUrl.trim() || !supabaseAnonKey.trim()) {
+      setCloudStatusMsg({ text: 'Please enter both Supabase URL and Anon Key', type: 'error' });
+      return;
+    }
+    saveCloudCredentials({
+      supabaseUrl: supabaseUrl.trim(),
+      supabaseAnonKey: supabaseAnonKey.trim(),
+    });
+    setCloudConfigured(true);
+    setCloudStatusMsg({ text: '✓ Cloud credentials saved locally!', type: 'success' });
+    setTimeout(() => setCloudStatusMsg(null), 3000);
+    setShowCloudConfig(false);
+  }
+
+  async function handleTestConnection() {
+    setIsTestingConn(true);
+    setCloudStatusMsg({ text: 'Connecting to Supabase…', type: 'info' });
     try {
-      const backup = await exportShopBackup(shop.id);
-      downloadBackupJson(backup);
+      const res = await testCloudConnection();
+      setCloudStatusMsg({
+        text: res.message,
+        type: res.success ? 'success' : 'error',
+      });
     } catch (err) {
-      alert('Failed to export backup: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setCloudStatusMsg({
+        text: 'Connection failed: ' + (err instanceof Error ? err.message : 'Network error'),
+        type: 'error',
+      });
     } finally {
-      setIsExporting(false);
+      setIsTestingConn(false);
     }
   }
 
-  async function handleRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleForceCloudSync() {
+    if (!cloudConfigured) {
+      setShowCloudConfig(true);
+      setCloudStatusMsg({
+        text: 'Please configure your free Supabase URL & Anon Key first.',
+        type: 'info',
+      });
+      return;
+    }
+
+    setIsCloudSyncing(true);
+    setCloudStatusMsg({ text: 'Uploading latest shop backup to online DB…', type: 'info' });
+    try {
+      const res = await cloudSyncPush(shop.id);
+      setCloudStatusMsg({
+        text: res.message,
+        type: res.success ? 'success' : 'error',
+      });
+    } catch (err) {
+      setCloudStatusMsg({
+        text: 'Cloud sync failed: ' + (err instanceof Error ? err.message : 'Error'),
+        type: 'error',
+      });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  }
+
+  async function handleRestoreFromCloud() {
+    if (!cloudConfigured) {
+      setShowCloudConfig(true);
+      setCloudStatusMsg({
+        text: 'Please configure your free Supabase URL & Anon Key first.',
+        type: 'info',
+      });
+      return;
+    }
 
     const confirmed = window.confirm(
-      'Restoring a backup will replace current local shop data with the backup file. Do you wish to continue?'
+      'Restoring from the online DB will replace your local offline shop data with the latest cloud backup. Continue?'
     );
     if (!confirmed) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string) as ShopBackupData;
-        await restoreShopBackup(json);
+    setIsCloudRestoring(true);
+    setCloudStatusMsg({ text: 'Fetching latest backup from online DB…', type: 'info' });
+    try {
+      const res = await cloudSyncPull(shop.id);
+      if (res.success) {
         await refreshShop();
-        alert('Shop backup restored successfully!');
-      } catch (err) {
-        alert('Failed to restore backup file: ' + (err instanceof Error ? err.message : 'Invalid JSON'));
+        setCloudStatusMsg({ text: res.message, type: 'success' });
+      } else {
+        setCloudStatusMsg({ text: res.message, type: 'error' });
       }
-    };
-    reader.readAsText(file);
+    } catch (err) {
+      setCloudStatusMsg({
+        text: 'Restore failed: ' + (err instanceof Error ? err.message : 'Error'),
+        type: 'error',
+      });
+    } finally {
+      setIsCloudRestoring(false);
+    }
   }
 
   async function handleRunSimulator() {
@@ -104,9 +199,9 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
     <div className="flex flex-col h-full bg-gray-50 overflow-y-auto p-4 space-y-5">
       {/* Header */}
       <div>
-        <div className="font-black text-xl text-gray-900">⚙️ Settings & Data Ownership</div>
+        <div className="font-black text-xl text-gray-900">⚙️ Settings & Online Cloud DB</div>
         <div className="text-xs text-gray-500">
-          Data export, backup restore, sync status, and shop diagnostics.
+          Single login account, offline-first storage with free Supabase cloud backup.
         </div>
       </div>
 
@@ -193,10 +288,146 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
         )}
       </div>
 
-      {/* Sync Status Card */}
+      {/* Online Cloud DB Card (Supabase Free Tier) */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between border-b pb-2.5">
+          <div>
+            <div className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+              <span>☁️</span> Online Cloud Database (Supabase Free Tier)
+            </div>
+            <div className="text-xs text-gray-500">
+              All transactions remain instantaneous and offline on your phone, with free cloud sync.
+            </div>
+          </div>
+          <span
+            className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+              cloudConfigured ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {cloudConfigured ? '● Configured' : '○ Not Linked'}
+          </span>
+        </div>
+
+        {/* Status Notification */}
+        {cloudStatusMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-semibold border ${
+              cloudStatusMsg.type === 'success'
+                ? 'bg-green-50 text-green-800 border-green-200'
+                : cloudStatusMsg.type === 'error'
+                ? 'bg-red-50 text-red-800 border-red-200'
+                : 'bg-blue-50 text-blue-800 border-blue-200'
+            }`}
+          >
+            {cloudStatusMsg.text}
+          </div>
+        )}
+
+        {/* Sync & Restore Actions (Replaces manual JSON file download) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            onClick={handleForceCloudSync}
+            disabled={isCloudSyncing}
+            className="bg-blue-900 hover:bg-blue-800 active:scale-98 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+          >
+            <span>{isCloudSyncing ? '⏳' : '⚡'}</span>
+            <span>{isCloudSyncing ? 'Updating Online DB…' : 'Force Sync (Update Online DB)'}</span>
+          </button>
+
+          <button
+            onClick={handleRestoreFromCloud}
+            disabled={isCloudRestoring}
+            className="bg-white border-2 border-blue-900 hover:bg-blue-50 active:scale-98 text-blue-900 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+          >
+            <span>{isCloudRestoring ? '⏳' : '📥'}</span>
+            <span>{isCloudRestoring ? 'Fetching Backup…' : 'Restore from Online DB'}</span>
+          </button>
+        </div>
+
+        {/* Supabase Connection Setup Toggle */}
+        <div className="pt-1">
+          <button
+            onClick={() => setShowCloudConfig(!showCloudConfig)}
+            className="text-xs text-blue-700 hover:text-blue-900 font-bold flex items-center gap-1"
+          >
+            <span>⚙️</span>
+            <span>{showCloudConfig ? 'Hide Cloud DB Configuration' : 'Configure Supabase Credentials (Free Account)'}</span>
+          </button>
+
+          {showCloudConfig && (
+            <form onSubmit={handleSaveCloudConfig} className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-3.5 space-y-3 animate-in fade-in duration-150">
+              <div className="text-xs text-gray-600">
+                You can create a 100% free project at{' '}
+                <a
+                  href="https://supabase.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 font-bold underline"
+                >
+                  supabase.com
+                </a>
+                . No credit card required. Paste your Project URL and Anon/Public Key below:
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Supabase Project URL
+                </label>
+                <input
+                  type="url"
+                  value={supabaseUrl}
+                  onChange={(e) => setSupabaseUrl(e.target.value)}
+                  placeholder="https://xyzcompany.supabase.co"
+                  className="w-full border rounded-xl px-3 py-2 text-xs font-mono bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Supabase Anon Key (Public)
+                </label>
+                <input
+                  type="password"
+                  value={supabaseAnonKey}
+                  onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  className="w-full border rounded-xl px-3 py-2 text-xs font-mono bg-white"
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-800 space-y-1">
+                <div className="font-bold">📋 Required Table Schema in Supabase:</div>
+                <div>Run this 1-line script in your Supabase SQL Editor once:</div>
+                <code className="block bg-amber-100/70 p-1.5 rounded text-[10px] font-mono break-all select-all">
+                  CREATE TABLE IF NOT EXISTS shop_backups (shop_id text PRIMARY KEY, shop_name text, owner_name text, total_products int, total_sales int, backup_payload jsonb, updated_at timestamptz DEFAULT now());
+                </code>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={isTestingConn || !supabaseUrl || !supabaseAnonKey}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs px-3 py-2 rounded-xl disabled:opacity-50"
+                >
+                  {isTestingConn ? 'Testing…' : '🔍 Test Connection'}
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex-1 text-center"
+                >
+                  Save Cloud Settings
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* Local Sync Status Card */}
       <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
         <div className="font-bold text-sm text-gray-900 flex items-center justify-between">
-          <span>Synchronization Status</span>
+          <span>Local Device Outbox</span>
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-bold ${
               syncStatus.state === 'synced'
@@ -211,45 +442,8 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
         </div>
 
         <div className="text-xs text-gray-500 space-y-1 font-mono">
-          <div>Device ID: {deviceId || 'browser-profile'}</div>
-          <div>Pending Outbox Events: {syncStatus.pendingCount}</div>
-        </div>
-
-        <button
-          onClick={() => syncEngine.triggerSync()}
-          className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs py-2 px-3 rounded-xl"
-        >
-          🔄 Force Sync Now
-        </button>
-      </div>
-
-      {/* Data Ownership: Export / Restore */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
-        <div>
-          <div className="font-bold text-sm text-gray-900">Complete Shop Backup & Export</div>
-          <div className="text-xs text-gray-500 mt-0.5">
-            You own 100% of your data. Download a complete JSON snapshot anytime or restore to another device.
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex-1 bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-xl text-xs shadow text-center"
-          >
-            {isExporting ? 'Exporting…' : '📥 Download Backup File (.json)'}
-          </button>
-
-          <label className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl text-xs text-center cursor-pointer">
-            📤 Restore from File (.json)
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleRestoreFile}
-              className="hidden"
-            />
-          </label>
+          <div>Device ID: {deviceId || 'mobile-browser'}</div>
+          <div>Pending Local Outbox Events: {syncStatus.pendingCount}</div>
         </div>
       </div>
 

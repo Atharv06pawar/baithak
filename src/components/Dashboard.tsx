@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Shop } from '@/lib/types';
 import POSScreen from '@/components/POSScreen';
 import SaleHistory from '@/components/SaleHistory';
@@ -36,14 +36,45 @@ export default function Dashboard({ shop }: { shop: Shop }) {
     };
   }, []);
 
+  // Hardware Back Button: Tab Navigation History
+  const navigateTab = useCallback((newTab: MainTab) => {
+    if (newTab === activeTab) return;
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ baithak_tab: newTab }, '');
+    }
+    setActiveTab(newTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Set initial baseline history state
+    window.history.replaceState({ baithak_tab: 'pos' }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      // If modal event, let modal hook handle it
+      if (e.state && e.state.baithak_modal) return;
+
+      if (e.state && e.state.baithak_tab) {
+        setActiveTab(e.state.baithak_tab);
+      } else {
+        // Return to default POS tab rather than exiting the application
+        setActiveTab('pos');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Top Header */}
-      <header className="bg-blue-900 text-white px-4 py-2.5 flex items-center justify-between shadow-md">
+    <div className="flex flex-col h-[100dvh] max-h-[100dvh] w-full bg-gray-50 overflow-hidden fixed inset-0">
+      {/* Top Header - Strictly shrink-0 pinned at top */}
+      <header className="shrink-0 bg-blue-900 text-white px-4 py-2.5 flex items-center justify-between shadow-md z-20">
         <div>
           <div className="font-black text-base tracking-wide flex items-center gap-2">
             <span>बैठक</span>
-            <span className="font-semibold text-sm opacity-90 truncate max-w-[180px] sm:max-w-xs">
+            <span className="font-semibold text-sm opacity-90 truncate max-w-[160px] sm:max-w-xs">
               {shop.name}
             </span>
           </div>
@@ -62,7 +93,7 @@ export default function Dashboard({ shop }: { shop: Shop }) {
                   : 'bg-gray-400'
               }`}
             />
-            <span className="truncate max-w-[120px]">{syncStatus.label}</span>
+            <span className="truncate max-w-[110px]">{syncStatus.label}</span>
           </div>
 
           {/* Quick Lock Button */}
@@ -77,8 +108,8 @@ export default function Dashboard({ shop }: { shop: Shop }) {
         </div>
       </header>
 
-      {/* Main Tab Panels */}
-      <main className="flex-1 overflow-hidden relative">
+      {/* Main Tab Panels - flex-1 min-h-0 so child views scroll within themselves */}
+      <main className="flex-1 overflow-hidden relative min-h-0 flex flex-col">
         {activeTab === 'pos' && <POSScreen shopId={shop.id} />}
         {activeTab === 'history' && <SaleHistory shopId={shop.id} />}
         {activeTab === 'stock' && <InventoryScreen shopId={shop.id} />}
@@ -88,8 +119,8 @@ export default function Dashboard({ shop }: { shop: Shop }) {
         {activeTab === 'settings' && <SettingsBackupView shop={shop} />}
       </main>
 
-      {/* Bottom Counter Bar Navigation (Touch Optimized, min 48px, Safe Area Inset) */}
-      <nav className="bg-white border-t border-gray-200 flex justify-around shadow-lg select-none safe-bottom pb-1">
+      {/* Bottom Counter Bar Navigation - Strictly shrink-0 pinned to bottom of phone screen */}
+      <nav className="shrink-0 bg-white border-t border-gray-200 flex justify-around shadow-lg select-none safe-bottom pb-1 z-30">
         {(
           [
             { id: 'pos' as MainTab, label: 'POS', icon: '🛒' },
@@ -105,7 +136,7 @@ export default function Dashboard({ shop }: { shop: Shop }) {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => navigateTab(tab.id)}
               className={`flex-1 py-1.5 px-0.5 flex flex-col items-center justify-center gap-0.5 min-h-[52px] transition-all ${
                 isActive
                   ? 'text-blue-900 border-t-2 border-blue-900 bg-blue-50/50 font-bold -mt-px'

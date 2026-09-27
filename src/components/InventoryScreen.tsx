@@ -6,6 +6,7 @@ import { getSuppliers, createSupplier, type CreateSupplierInput } from '@/lib/do
 import { getPurchases, createPurchase, type PurchaseItemInput } from '@/lib/domain/purchase';
 import { createStockAdjustment, getStockAdjustments } from '@/lib/domain/stock_adjustment';
 import { toPaise, formatMoney } from '@/lib/money';
+import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Product, Supplier, Purchase, StockAdjustment, UUID } from '@/lib/types';
 
 type SubTab = 'products' | 'purchases' | 'suppliers' | 'adjustments';
@@ -23,6 +24,12 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [showRecordPurchase, setShowRecordPurchase] = useState(false);
   const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
+
+  // Mobile Back Button handlers: close open modals/sheets before exiting app
+  useMobileBackHandler(showAddProduct, () => setShowAddProduct(false), 'inv_add_product');
+  useMobileBackHandler(showAddSupplier, () => setShowAddSupplier(false), 'inv_add_supplier');
+  useMobileBackHandler(showRecordPurchase, () => setShowRecordPurchase(false), 'inv_record_purchase');
+  useMobileBackHandler(!!adjustingProduct, () => setAdjustingProduct(null), 'inv_adjust_product');
 
   // Forms
   const [prodName, setProdName] = useState('');

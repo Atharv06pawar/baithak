@@ -5,6 +5,7 @@ import { getProducts } from '@/lib/domain/product';
 import { createSale } from '@/lib/domain/sale';
 import { getCustomers, createCustomer, type CustomerWithBalance } from '@/lib/domain/customer';
 import { formatMoney, multiplyMoney, sumMoney, toPaise } from '@/lib/money';
+import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { SaleItemInput } from '@/lib/domain/sale';
 import type { Product, Sale, UUID } from '@/lib/types';
 
@@ -28,6 +29,11 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
   const [completedSale, setCompletedSale] = useState<{ sale: Sale; items: CartItem[] } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+
+  // Mobile Back Button handlers: close sheets/modals before exiting app
+  useMobileBackHandler(isMobileCartOpen, () => setIsMobileCartOpen(false), 'pos_cart');
+  useMobileBackHandler(!!completedSale, () => setCompletedSale(null), 'pos_receipt');
+  useMobileBackHandler(showAddCustomer, () => setShowAddCustomer(false), 'pos_add_customer');
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 

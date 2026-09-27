@@ -6,6 +6,7 @@ import { getCustomers, createCustomer, recordCustomerPayment, getCustomerLedger,
 import { generateCashReconciliation, type CashReconciliationReport } from '@/lib/domain/reconciliation';
 import { getDayOverview, closeDay, type DayOverview } from '@/lib/domain/closing';
 import { toPaise, formatMoney } from '@/lib/money';
+import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Expense, CustomerLedgerEntry, ExpenseCategory, UUID } from '@/lib/types';
 
 type BusinessTab = 'expenses' | 'udhaar' | 'reconciliation' | 'closing';
@@ -24,6 +25,12 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
   const [payingCustomer, setPayingCustomer] = useState<CustomerWithBalance | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<CustomerWithBalance | null>(null);
   const [customerLedgerEntries, setCustomerLedgerEntries] = useState<CustomerLedgerEntry[]>([]);
+
+  // Mobile Back Button handlers: close open modals/sheets before exiting app
+  useMobileBackHandler(showAddExpense, () => setShowAddExpense(false), 'biz_add_expense');
+  useMobileBackHandler(showAddCustomer, () => setShowAddCustomer(false), 'biz_add_customer');
+  useMobileBackHandler(!!payingCustomer, () => setPayingCustomer(null), 'biz_pay_customer');
+  useMobileBackHandler(!!viewingCustomer, () => setViewingCustomer(null), 'biz_view_customer');
 
   // Expense form
   const [expAmount, setExpAmount] = useState('');
