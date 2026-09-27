@@ -3,9 +3,10 @@
 import { useShop } from '@/contexts/ShopContext';
 import ShopSetup from '@/components/ShopSetup';
 import Dashboard from '@/components/Dashboard';
+import LockScreen from '@/components/LockScreen';
 
 export default function Home() {
-  const { shop, isLoading } = useShop();
+  const { shop, isLoading, isUnlocked } = useShop();
 
   if (isLoading) {
     return (
@@ -20,6 +21,10 @@ export default function Home() {
 
   if (!shop) {
     return <ShopSetup />;
+  }
+
+  if (!isUnlocked) {
+    return <LockScreen shop={shop} />;
   }
 
   return <Dashboard shop={shop} />;

@@ -10,6 +10,7 @@ import ActionCenterView from '@/components/ActionCenterView';
 import AskBaithakView from '@/components/AskBaithakView';
 import SettingsBackupView from '@/components/SettingsBackupView';
 import { syncEngine, type SyncEngineStatus } from '@/lib/sync/engine';
+import { useShop } from '@/contexts/ShopContext';
 
 export type MainTab =
   | 'pos'
@@ -21,6 +22,7 @@ export type MainTab =
   | 'settings';
 
 export default function Dashboard({ shop }: { shop: Shop }) {
+  const { lock } = useShop();
   const [activeTab, setActiveTab] = useState<MainTab>('pos');
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(syncEngine.getStatus());
 
@@ -48,18 +50,30 @@ export default function Dashboard({ shop }: { shop: Shop }) {
           <div className="text-blue-200 text-[11px]">{shop.ownerName} • Shop OS</div>
         </div>
 
-        {/* Sync Status Badge */}
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-blue-100 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
-          <span
-            className={`w-2 h-2 rounded-full ${
-              syncStatus.state === 'synced'
-                ? 'bg-green-400 animate-pulse'
-                : syncStatus.state === 'syncing'
-                ? 'bg-amber-300 animate-ping'
-                : 'bg-gray-400'
-            }`}
-          />
-          <span className="truncate max-w-[140px]">{syncStatus.label}</span>
+        <div className="flex items-center gap-2">
+          {/* Sync Status Badge */}
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-blue-100 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                syncStatus.state === 'synced'
+                  ? 'bg-green-400 animate-pulse'
+                  : syncStatus.state === 'syncing'
+                  ? 'bg-amber-300 animate-ping'
+                  : 'bg-gray-400'
+              }`}
+            />
+            <span className="truncate max-w-[120px]">{syncStatus.label}</span>
+          </div>
+
+          {/* Quick Lock Button */}
+          <button
+            onClick={lock}
+            title="Lock Counter"
+            className="bg-white/10 hover:bg-white/20 active:scale-95 text-blue-100 text-xs px-2.5 py-1 rounded-full border border-white/10 flex items-center gap-1 transition-transform"
+          >
+            <span>🔒</span>
+            <span className="hidden sm:inline">Lock</span>
+          </button>
         </div>
       </header>
 
