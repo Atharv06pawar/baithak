@@ -14,6 +14,7 @@ import {
   isGoogleDriveConnected,
   syncToGoogleDrive,
   restoreFromGoogleDrive,
+  signInWithGoogle,
   type GoogleDriveConfig,
 } from '@/lib/cloud/googleDrive';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
@@ -42,6 +43,7 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
   const [driveStatusMsg, setDriveStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isDriveSyncing, setIsDriveSyncing] = useState(false);
   const [isDriveRestoring, setIsDriveRestoring] = useState(false);
+  const [isSigningInGoogle, setIsSigningInGoogle] = useState(false);
 
   // Intercept back button if drive config drawer is open
   useMobileBackHandler(showDriveConfig, () => setShowDriveConfig(false), 'settings_drive_config');
@@ -75,6 +77,46 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
     setIsChangingPin(false);
     setPinSuccessMessage('✓ Master PIN updated successfully!');
     setTimeout(() => setPinSuccessMessage(''), 3000);
+  }
+
+  // 1-Click Sign In with Google (Zero manual configuration needed)
+  async function handleSignInWithGoogle() {
+    setIsSigningInGoogle(true);
+    setDriveStatusMsg({ text: 'Connecting with Google and creating backup environment…', type: 'info' });
+    try {
+      const clientId =
+        driveClientIdInput.trim() ||
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+        driveConfig?.clientId;
+
+      const res = await signInWithGoogle(shop.id, clientId);
+      if (res.success) {
+        const updated = getGoogleDriveConfig();
+        setDriveConfig(updated);
+        setDriveConnected(true);
+        setShowDriveConfig(false);
+        setDriveStatusMsg({
+          text: res.message,
+          type: 'success',
+        });
+        setTimeout(() => setDriveStatusMsg(null), 5000);
+      } else {
+        if (res.message.includes('Client ID')) {
+          setShowDriveConfig(true);
+        }
+        setDriveStatusMsg({
+          text: res.message,
+          type: 'error',
+        });
+      }
+    } catch (err) {
+      setDriveStatusMsg({
+        text: 'Google Sign-In failed: ' + (err instanceof Error ? err.message : 'Unknown error'),
+        type: 'error',
+      });
+    } finally {
+      setIsSigningInGoogle(false);
+    }
   }
 
   // Connect Google Drive using token / direct credentials
@@ -320,33 +362,33 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
           </div>
         )}
 
-        {/* Sync & Restore Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <button
-            onClick={handleForceDriveSync}
-            disabled={isDriveSyncing}
-            className="bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 active:scale-98 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
-          >
-            <span>{isDriveSyncing ? '⏳' : '⚡'}</span>
-            <span>{isDriveSyncing ? 'Syncing to Drive…' : 'Force Sync to Google Drive'}</span>
-          </button>
+        {driveConnected ? (
+          <div className="space-y-3">
+            {/* Sync & Restore Actions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                onClick={handleForceDriveSync}
+                disabled={isDriveSyncing}
+                className="bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 active:scale-98 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+              >
+                <span>{isDriveSyncing ? '⏳' : '⚡'}</span>
+                <span>{isDriveSyncing ? 'Syncing to Drive…' : 'Force Sync to Google Drive'}</span>
+              </button>
 
-          <button
-            onClick={handleRestoreFromDrive}
-            disabled={isDriveRestoring}
-            className="bg-white dark:bg-slate-800 border-2 border-blue-900 dark:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 active:scale-98 text-blue-900 dark:text-blue-300 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
-          >
-            <span>{isDriveRestoring ? '⏳' : '📥'}</span>
-            <span>{isDriveRestoring ? 'Restoring…' : 'Restore from Google Drive'}</span>
-          </button>
-        </div>
+              <button
+                onClick={handleRestoreFromDrive}
+                disabled={isDriveRestoring}
+                className="bg-white dark:bg-slate-800 border-2 border-blue-900 dark:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 active:scale-98 text-blue-900 dark:text-blue-300 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+              >
+                <span>{isDriveRestoring ? '⏳' : '📥'}</span>
+                <span>{isDriveRestoring ? 'Restoring…' : 'Restore from Google Drive'}</span>
+              </button>
+            </div>
 
-        {/* Connected Details or Connect Form */}
-        <div className="pt-1">
-          {driveConnected ? (
+            {/* Connected Details */}
             <div className="bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-xs space-y-1.5">
               <div className="flex justify-between items-center">
-                <span className="text-gray-500 dark:text-slate-400">Account:</span>
+                <span className="text-gray-500 dark:text-slate-400">Connected Account:</span>
                 <span className="font-bold text-gray-900 dark:text-white">{driveConfig?.userEmail || 'Connected Google Account'}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -367,58 +409,99 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
                 </button>
               </div>
             </div>
-          ) : (
-            <div>
+          </div>
+        ) : (
+          /* Not Connected: 1-Click Sign in with Google */
+          <div className="space-y-3">
+            <div className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+              Connect your personal Google account. BaithakOS will automatically create a dedicated{' '}
+              <span className="font-semibold text-blue-900 dark:text-blue-300">BaithakOS Backups</span> folder in your Google Drive and silently keep your shop updated every 5 minutes.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSignInWithGoogle}
+              disabled={isSigningInGoogle}
+              className="w-full bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-750 active:scale-98 text-gray-800 dark:text-white border-2 border-gray-300 dark:border-slate-600 py-3.5 px-4 rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-3 transition-transform disabled:opacity-60"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.28-2.09 3.66-5.18 3.66-9.12z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.27 21.43 7.33 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.16 0 9.99 0 12s.45 3.84 1.25 5.42l4.03-3.13z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.27 2.57 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"
+                />
+              </svg>
+              <span>{isSigningInGoogle ? 'Connecting with Google…' : 'Sign in with Google'}</span>
+            </button>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-gray-500 dark:text-slate-400">
+                🔒 Safe & private • Only accesses its own backup folder
+              </span>
               <button
+                type="button"
                 onClick={() => setShowDriveConfig(!showDriveConfig)}
-                className="text-xs text-blue-700 dark:text-blue-400 hover:underline font-bold flex items-center gap-1"
+                className="text-[11px] text-blue-700 dark:text-blue-400 hover:underline font-semibold"
               >
-                <span>⚙️</span>
-                <span>{showDriveConfig ? 'Hide Drive Setup' : 'Configure Google Drive Account'}</span>
+                {showDriveConfig ? 'Hide Advanced' : 'Custom Client ID / Demo'}
               </button>
+            </div>
 
-              {showDriveConfig && (
-                <div className="mt-3 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-xl p-3.5 space-y-3 animate-in fade-in duration-150">
-                  <div className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
-                    Connect your personal Google account. BaithakOS will automatically create a dedicated{' '}
-                    <code className="bg-gray-200 dark:bg-slate-700 px-1 py-0.5 rounded font-mono font-bold">BaithakOS Backups</code> folder
-                    in your Drive and silently keep it updated every 5 minutes.
+            {showDriveConfig && (
+              <div className="mt-2 bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-xl p-3.5 space-y-3 animate-in fade-in duration-150">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-gray-800 dark:text-slate-200">
+                    Custom OAuth Client ID or Instant Demo
+                  </div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
+                    Set a custom Google Cloud Client ID for your deployment, or use 1-Tap Instant Demo to test automated sync right now.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleInstantGoogleConnect}
+                  className="w-full bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 text-white font-bold text-xs py-2.5 rounded-xl shadow flex items-center justify-center gap-2"
+                >
+                  <span>🚀</span>
+                  <span>1-Tap Instant Demo Connect</span>
+                </button>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
+                  <span className="flex-shrink mx-2 text-[10px] text-gray-400 uppercase font-bold">Or Enter Custom Credentials</span>
+                  <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Google OAuth Client ID
+                    </label>
+                    <input
+                      type="text"
+                      value={driveClientIdInput}
+                      onChange={(e) => setDriveClientIdInput(e.target.value)}
+                      placeholder="123456789-abc.apps.googleusercontent.com"
+                      className="w-full border dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={handleInstantGoogleConnect}
-                      className="w-full bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 text-white font-bold text-xs py-2.5 rounded-xl shadow flex items-center justify-center gap-2"
-                    >
-                      <span>🚀</span>
-                      <span>1-Tap Instant Connect to Google Drive</span>
-                    </button>
-                  </div>
-
-                  <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
-                    <span className="flex-shrink mx-2 text-[10px] text-gray-400 uppercase font-bold">Or Enter Custom Credentials</span>
-                    <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
-                  </div>
-
-                  <form onSubmit={handleConnectDrive} className="space-y-2.5">
+                  <form onSubmit={handleConnectDrive} className="space-y-2 pt-1 border-t border-gray-200 dark:border-slate-700">
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                        Google Account Email
-                      </label>
-                      <input
-                        type="email"
-                        value={driveEmailInput}
-                        onChange={(e) => setDriveEmailInput(e.target.value)}
-                        placeholder="shopkeeper@gmail.com"
-                        className="w-full border dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                        Access Token (OAuth 2.0)
+                        Manual Access Token (Optional)
                       </label>
                       <input
                         type="password"
@@ -433,14 +516,14 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
                       type="submit"
                       className="w-full border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold text-xs py-2 rounded-xl"
                     >
-                      Save & Connect
+                      Save Custom Credentials
                     </button>
                   </form>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Single Owner Account & Security Card */}

@@ -67,6 +67,153 @@ export function isGoogleDriveConnected(): boolean {
 }
 
 /**
+ * Dynamically load Google Identity Services client script
+ */
+export function loadGoogleIdentityScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  // @ts-expect-error - google namespace on window
+  if (window.google?.accounts?.oauth2) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('google-gsi-client');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', (err) => reject(err));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-gsi-client';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = (err) => reject(err);
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Sign in with Google using official Google Identity Services OAuth 2.0 Token Client:
+ * 1. Prompts official Google Sign-In popup.
+ * 2. Requests drive.file and userinfo.email scopes.
+ * 3. Automatically creates the "BaithakOS Backups" environment folder in Drive.
+ * 4. Automatically uploads initial shop backup file.
+ */
+export async function signInWithGoogle(
+  shopId: UUID,
+  customClientId?: string
+): Promise<{ success: boolean; message: string; email?: string }> {
+  if (typeof window === 'undefined') {
+    return { success: false, message: 'Browser environment required' };
+  }
+
+  const clientId =
+    customClientId ||
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    getGoogleDriveConfig()?.clientId;
+
+  if (!clientId) {
+    return {
+      success: false,
+      message: 'Google Client ID is missing. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID or enter Client ID in Settings.',
+    };
+  }
+
+  try {
+    await loadGoogleIdentityScript();
+  } catch {
+    return {
+      success: false,
+      message: 'Failed to load Google Identity Services. Check your internet connection.',
+    };
+  }
+
+  // @ts-expect-error - google namespace on window
+  const googleAccounts = window.google?.accounts?.oauth2;
+  if (!googleAccounts) {
+    return {
+      success: false,
+      message: 'Google Identity Service is not ready. Please try again.',
+    };
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const client = googleAccounts.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
+        callback: async (response: { access_token?: string; error?: string; expires_in?: number }) => {
+          if (response.error || !response.access_token) {
+            resolve({
+              success: false,
+              message: response.error || 'Google Sign-In was cancelled.',
+            });
+            return;
+          }
+
+          const accessToken = response.access_token;
+          const expiresInSec = response.expires_in || 3600;
+          const tokenExpiresAt = Date.now() + expiresInSec * 1000;
+
+          // Fetch user's Google email address
+          let userEmail = 'Google Account';
+          try {
+            const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (userInfoRes.ok) {
+              const info = await userInfoRes.json();
+              if (info.email) userEmail = info.email;
+            }
+          } catch {
+            // Silently fallback if userInfo lookup is blocked
+          }
+
+          // Persist credentials
+          const config: GoogleDriveConfig = {
+            accessToken,
+            tokenExpiresAt,
+            userEmail,
+            clientId,
+          };
+          saveGoogleDriveConfig(config);
+
+          // Automatically create the environment folder and initial backup in Google Drive!
+          try {
+            const syncResult = await syncToGoogleDrive(shopId);
+            resolve({
+              success: true,
+              email: userEmail,
+              message: `✓ Connected to Google Drive (${userEmail})! ${syncResult.message}`,
+            });
+          } catch (syncErr) {
+            resolve({
+              success: true,
+              email: userEmail,
+              message: `✓ Connected as ${userEmail}! Auto-sync will update your Drive every 5 mins.`,
+            });
+          }
+        },
+        error_callback: () => {
+          resolve({
+            success: false,
+            message: 'Google Sign-In popup was closed.',
+          });
+        },
+      });
+
+      client.requestAccessToken({ prompt: 'consent' });
+    } catch (err) {
+      resolve({
+        success: false,
+        message: err instanceof Error ? err.message : 'Google Sign-In error',
+      });
+    }
+  });
+}
+
+/**
  * Find or automatically create the "BaithakOS Backups" folder in Google Drive
  */
 export async function getOrCreateDriveFolder(accessToken: string): Promise<string> {
