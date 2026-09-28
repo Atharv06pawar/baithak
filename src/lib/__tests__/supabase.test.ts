@@ -11,9 +11,12 @@ beforeEach(() => {
 });
 
 describe('Supabase Free Cloud Service', () => {
-  it('returns null when no credentials configured', () => {
-    expect(getCloudCredentials()).toBeNull();
-    expect(isCloudConfigured()).toBe(false);
+  it('returns active cloud credentials out of the box', () => {
+    const creds = getCloudCredentials();
+    expect(creds).not.toBeNull();
+    expect(creds.supabaseUrl).toContain('supabase.co');
+    expect(creds.supabaseAnonKey).toBeDefined();
+    expect(isCloudConfigured()).toBe(true);
   });
 
   it('saves and retrieves custom Supabase credentials', () => {

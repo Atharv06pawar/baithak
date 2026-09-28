@@ -13,6 +13,7 @@ import NotificationCenterModal from '@/components/NotificationCenterModal';
 import { syncEngine, type SyncEngineStatus } from '@/lib/sync/engine';
 import { getOperationalTasks } from '@/lib/domain/task';
 import { googleDriveAutoSync } from '@/lib/cloud/googleDrive';
+import { supabaseAutoSync } from '@/lib/cloud/supabase';
 import { useShop } from '@/contexts/ShopContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -33,10 +34,12 @@ export default function Dashboard({ shop }: { shop: Shop }) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [pendingNotificationCount, setPendingNotificationCount] = useState(0);
 
-  // 5-Minute Google Drive Auto-Sync: Runs silently in the background when connected
+  // Multi-Device Cloud Sync: keeps all phones & devices synchronized
   useEffect(() => {
+    supabaseAutoSync.start(shop.id);
     googleDriveAutoSync.start(shop.id);
     return () => {
+      supabaseAutoSync.stop();
       googleDriveAutoSync.stop();
     };
   }, [shop.id]);

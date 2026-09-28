@@ -17,6 +17,11 @@ import {
   signInWithGoogle,
   type GoogleDriveConfig,
 } from '@/lib/cloud/googleDrive';
+import {
+  cloudSyncPush,
+  cloudSyncPull,
+  isCloudConfigured,
+} from '@/lib/cloud/supabase';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Shop } from '@/lib/types';
 
@@ -32,6 +37,12 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
   const [newPin, setNewPin] = useState('');
   const [pinSuccessMessage, setPinSuccessMessage] = useState('');
   const [isChangingPin, setIsChangingPin] = useState(false);
+
+  // Baithak Cloud (Supabase) Multi-Device state
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [isCloudPulling, setIsCloudPulling] = useState(false);
+  const [cloudMsg, setCloudMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [copiedShopId, setCopiedShopId] = useState(false);
 
   // Google Drive state
   const [driveConnected, setDriveConnected] = useState(false);
@@ -77,6 +88,71 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
     setIsChangingPin(false);
     setPinSuccessMessage('✓ Master PIN updated successfully!');
     setTimeout(() => setPinSuccessMessage(''), 3000);
+  }
+
+  // Baithak Cloud Multi-Device handlers
+  async function handleCopyShopId() {
+    try {
+      await navigator.clipboard.writeText(shop.id);
+      setCopiedShopId(true);
+      setTimeout(() => setCopiedShopId(false), 2500);
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = shop.id;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedShopId(true);
+      setTimeout(() => setCopiedShopId(false), 2500);
+    }
+  }
+
+  async function handleForceCloudPush() {
+    setIsCloudSyncing(true);
+    setCloudMsg({ text: 'Syncing shop data to Baithak Cloud…', type: 'info' });
+    try {
+      const res = await cloudSyncPush(shop.id);
+      setCloudMsg({
+        text: res.message,
+        type: res.success ? 'success' : 'error',
+      });
+      setTimeout(() => setCloudMsg(null), 5000);
+    } catch (err) {
+      setCloudMsg({
+        text: 'Cloud sync failed: ' + (err instanceof Error ? err.message : 'Error'),
+        type: 'error',
+      });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  }
+
+  async function handleForceCloudPull() {
+    const confirmed = window.confirm(
+      'Pulling from cloud will merge the latest sales, products, and khata records from your other synced devices into this device. Continue?'
+    );
+    if (!confirmed) return;
+
+    setIsCloudPulling(true);
+    setCloudMsg({ text: 'Fetching latest changes from Baithak Cloud…', type: 'info' });
+    try {
+      const res = await cloudSyncPull(shop.id);
+      if (res.success) {
+        await refreshShop();
+        setCloudMsg({ text: res.message, type: 'success' });
+      } else {
+        setCloudMsg({ text: res.message, type: 'error' });
+      }
+      setTimeout(() => setCloudMsg(null), 5000);
+    } catch (err) {
+      setCloudMsg({
+        text: 'Cloud pull failed: ' + (err instanceof Error ? err.message : 'Error'),
+        type: 'error',
+      });
+    } finally {
+      setIsCloudPulling(false);
+    }
   }
 
   // 1-Click Sign In with Google (Zero manual configuration needed)
@@ -322,6 +398,123 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
             <span>🌙</span>
             <span>Dark Theme</span>
           </button>
+        </div>
+      </div>
+
+      {/* 📱 Multi-Device Cloud Sync & Shop ID Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-blue-200 dark:border-blue-900 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2.5">
+          <div>
+            <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span>📱</span> Multi-Device Sync & Shop ID
+            </div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Run BaithakOS on your counter phone, owner phone, tablet & laptop with 100% consistent data.
+            </div>
+          </div>
+          <span
+            className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+              isCloudConfigured()
+                ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                : 'bg-amber-100 text-amber-800'
+            }`}
+          >
+            {isCloudConfigured() ? '● Live Multi-Device' : '○ Standalone'}
+          </span>
+        </div>
+
+        {/* Cloud Notification */}
+        {cloudMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-semibold border ${
+              cloudMsg.type === 'success'
+                ? 'bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
+                : cloudMsg.type === 'error'
+                ? 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
+                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+            }`}
+          >
+            {cloudMsg.text}
+          </div>
+        )}
+
+        {/* Shop ID for Linking other devices */}
+        <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider">
+              Your Unique Shop ID (Use on other devices)
+            </span>
+            <span className="text-[10px] bg-blue-200 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 px-1.5 py-0.5 rounded font-mono font-bold">
+              Shareable
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={shop.id}
+              className="flex-1 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2 text-xs font-mono text-gray-900 dark:text-white font-bold select-all focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleCopyShopId}
+              className="bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all shadow-sm flex-shrink-0"
+            >
+              <span>{copiedShopId ? '✓' : '📋'}</span>
+              <span>{copiedShopId ? 'Copied!' : 'Copy ID'}</span>
+            </button>
+          </div>
+
+          <div className="text-[11px] text-gray-600 dark:text-slate-400 leading-normal">
+            💡 On your other phone or laptop, open BaithakOS and tap <strong className="text-blue-900 dark:text-blue-300">&quot;Link Existing Shop&quot;</strong>, then enter this Shop ID or your registered mobile (<span className="font-mono font-semibold">{shop.phone || 'mobile'}</span>).
+          </div>
+        </div>
+
+        {/* Sync Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={handleForceCloudPush}
+            disabled={isCloudSyncing}
+            className="bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 active:scale-98 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+          >
+            <span>{isCloudSyncing ? '⏳' : '⚡'}</span>
+            <span>{isCloudSyncing ? 'Syncing to Cloud…' : 'Sync to Cloud Now'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleForceCloudPull}
+            disabled={isCloudPulling}
+            className="bg-white dark:bg-slate-800 border-2 border-blue-900 dark:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 active:scale-98 text-blue-900 dark:text-blue-300 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 transition-transform disabled:opacity-60"
+          >
+            <span>{isCloudPulling ? '⏳' : '📥'}</span>
+            <span>{isCloudPulling ? 'Pulling Latest…' : 'Pull Latest from Cloud'}</span>
+          </button>
+        </div>
+
+        {/* Sync Details */}
+        <div className="bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-xs space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-slate-400">Shop Name:</span>
+            <span className="font-bold text-gray-900 dark:text-white">{shop.name}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-slate-400">Registered Phone:</span>
+            <span className="font-mono text-gray-900 dark:text-white font-semibold">{shop.phone || 'Not set'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-slate-400">Cloud Auto-Sync:</span>
+            <span className="text-green-700 dark:text-green-400 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
+              Every 25 seconds (Silent background)
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-slate-400">Offline Resilience:</span>
+            <span className="text-blue-700 dark:text-blue-300 font-semibold">100% Offline-First (Local IndexedDB)</span>
+          </div>
         </div>
       </div>
 

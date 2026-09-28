@@ -12,13 +12,17 @@ import type { UUID } from '@/lib/types';
 
 const CLOUD_CONFIG_KEY = 'baithak_supabase_config';
 
+const DEFAULT_SUPABASE_URL = 'https://mpgznsjtehbepfifvmgw.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wZ3puc2p0ZWhiZXBmaWZ2bWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0ODk3ODgsImV4cCI6MjEwNjA2NTc4OH0.YZ9c0xtq-S3KqZyJGcuSzOYIA3ZGg1pHC4KnyKdNTcQ';
+
 export interface CloudCredentials {
   supabaseUrl: string;
   supabaseAnonKey: string;
 }
 
-/** Retrieve configured Supabase credentials (from env or localStorage) */
-export function getCloudCredentials(): CloudCredentials | null {
+/** Retrieve configured Supabase credentials (from env, localStorage, or project defaults) */
+export function getCloudCredentials(): CloudCredentials {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -30,14 +34,15 @@ export function getCloudCredentials(): CloudCredentials | null {
     const saved = localStorage.getItem(CLOUD_CONFIG_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.supabaseUrl && parsed.supabaseAnonKey) return parsed;
       } catch {
-        return null;
+        // fallback
       }
     }
   }
 
-  return null;
+  return { supabaseUrl: DEFAULT_SUPABASE_URL, supabaseAnonKey: DEFAULT_SUPABASE_ANON_KEY };
 }
 
 /** Save custom Supabase credentials in local storage */
@@ -140,11 +145,16 @@ export async function cloudSyncPush(shopId: UUID): Promise<{ success: boolean; m
       .upsert(record, { onConflict: 'shop_id' });
 
     if (error) {
-      // If table doesn't exist, provide helpful schema creation guidance
-      if (error.message.includes('relation "public.shop_backups" does not exist')) {
+      if (error.code === '42501' || error.message?.includes('row-level security')) {
         return {
           success: false,
-          message: 'Supabase table "shop_backups" does not exist. Run the 1-line SQL script in Supabase SQL editor: CREATE TABLE shop_backups (shop_id text PRIMARY KEY, shop_name text, owner_name text, total_products int, total_sales int, backup_payload jsonb, updated_at timestamptz);',
+          message: 'Supabase RLS is blocking writes. Please run: ALTER TABLE shop_backups DISABLE ROW LEVEL SECURITY; in Supabase SQL Editor.',
+        };
+      }
+      if (error.message?.includes('relation "public.shop_backups" does not exist')) {
+        return {
+          success: false,
+          message: 'Supabase table "shop_backups" does not exist. Run: CREATE TABLE shop_backups (shop_id text PRIMARY KEY, shop_name text, owner_name text, total_products int, total_sales int, backup_payload jsonb, updated_at timestamptz);',
         };
       }
       return { success: false, message: error.message };
@@ -222,3 +232,111 @@ export async function cloudSyncPull(shopId: UUID): Promise<{ success: boolean; m
     };
   }
 }
+
+/**
+ * Find an existing shop in Supabase by Shop ID, Shop Name, or Mobile Phone,
+ * and restore its entire catalog and balances to this device.
+ */
+export async function findAndRestoreShop(query: {
+  shopId?: string;
+  shopName?: string;
+  phone?: string;
+}): Promise<{ success: boolean; message: string; shopId?: UUID; shopName?: string }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { success: false, message: 'Cloud DB client not configured.' };
+  }
+
+  try {
+    let q = client.from('shop_backups').select('shop_id, shop_name, owner_name, backup_payload, updated_at');
+
+    if (query.shopId?.trim()) {
+      q = q.eq('shop_id', query.shopId.trim());
+    } else if (query.shopName?.trim()) {
+      q = q.ilike('shop_name', `%${query.shopName.trim()}%`);
+    }
+
+    const { data, error } = await q.order('updated_at', { ascending: false }).limit(10);
+    if (error) {
+      return { success: false, message: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        success: false,
+        message: 'No matching shop found on Baithak Cloud. Please check your Shop ID or shop name.',
+      };
+    }
+
+    // If phone filter was specified, match phone inside backup_payload
+    let match = data[0];
+    if (query.phone?.trim()) {
+      const cleanTarget = query.phone.replace(/\D/g, '');
+      const foundWithPhone = data.find((row) => {
+        const payload = row.backup_payload as ShopBackupData;
+        const shopObj = payload?.tables?.shops?.[0] as { phone?: string } | undefined;
+        if (!shopObj?.phone) return false;
+        return shopObj.phone.replace(/\D/g, '').includes(cleanTarget);
+      });
+      if (foundWithPhone) {
+        match = foundWithPhone;
+      }
+    }
+
+    if (!match.backup_payload) {
+      return { success: false, message: 'Shop backup data is empty.' };
+    }
+
+    await restoreShopBackup(match.backup_payload as ShopBackupData);
+
+    return {
+      success: true,
+      shopId: match.shop_id as UUID,
+      shopName: match.shop_name,
+      message: `✓ Connected to ${match.shop_name}! Synced with cloud data.`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Failed to connect to shop',
+    };
+  }
+}
+
+/**
+ * Autonomous Background Multi-Device Sync Manager for Supabase.
+ * Automatically pushes new sales/events and keeps devices in sync.
+ */
+class SupabaseAutoSync {
+  private timer: NodeJS.Timeout | null = null;
+  private isRunning = false;
+
+  public start(shopId: UUID, intervalMs = 25000): void {
+    this.stop();
+    // Silent initial push
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      cloudSyncPush(shopId).catch(() => {});
+    }
+
+    this.timer = setInterval(async () => {
+      if (this.isRunning || typeof window === 'undefined' || !navigator.onLine) return;
+      this.isRunning = true;
+      try {
+        await cloudSyncPush(shopId);
+      } catch {
+        // non-blocking
+      } finally {
+        this.isRunning = false;
+      }
+    }, intervalMs);
+  }
+
+  public stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+}
+
+export const supabaseAutoSync = new SupabaseAutoSync();
