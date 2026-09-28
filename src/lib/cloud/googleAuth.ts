@@ -163,15 +163,17 @@ export async function authenticateWithGoogle(customClientId?: string): Promise<G
   });
 }
 
+export const PRODUCTION_DEFAULT_GOOGLE_EMAIL = 'baithakp@gmail.com';
+
 /**
  * 1-Click Instant Google Connection (Zero setup required)
  * Allows entering/confirming Google Email to link Cloud Sync and Drive Backup seamlessly.
  */
 export async function instantGoogleLink(
-  email: string,
+  email?: string,
   ownerName?: string
 ): Promise<GoogleAuthResult> {
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = (email !== undefined ? email : PRODUCTION_DEFAULT_GOOGLE_EMAIL).trim().toLowerCase();
   if (!cleanEmail || !cleanEmail.includes('@')) {
     return { success: false, message: 'Please enter a valid Google email address.' };
   }

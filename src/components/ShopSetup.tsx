@@ -22,7 +22,7 @@ export default function ShopSetup() {
   const [doneMessage, setDoneMessage] = useState('Shop created!');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmailInput, setGoogleEmailInput] = useState('');
+  const [googleEmailInput, setGoogleEmailInput] = useState('baithakp@gmail.com');
   const { refreshShop } = useShop();
 
   async function handleGoogleSignIn() {

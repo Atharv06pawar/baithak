@@ -22,6 +22,7 @@ import {
   cloudSyncPull,
   isCloudConfigured,
 } from '@/lib/cloud/supabase';
+import { exportShopBackup, restoreShopBackup } from '@/lib/backup';
 import { updateShop } from '@/lib/domain/shop';
 import { authenticateWithGoogle, instantGoogleLink } from '@/lib/cloud/googleAuth';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
@@ -57,6 +58,11 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
   const [isDriveSyncing, setIsDriveSyncing] = useState(false);
   const [isDriveRestoring, setIsDriveRestoring] = useState(false);
   const [isSigningInGoogle, setIsSigningInGoogle] = useState(false);
+
+  // Manual Offline JSON Backup state
+  const [isExportingJson, setIsExportingJson] = useState(false);
+  const [isImportingJson, setIsImportingJson] = useState(false);
+  const [manualBackupMsg, setManualBackupMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Intercept back button if drive config drawer is open
   useMobileBackHandler(showDriveConfig, () => setShowDriveConfig(false), 'settings_drive_config');
@@ -186,6 +192,76 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
         text: 'Failed to link Google account: ' + (err instanceof Error ? err.message : 'Error'),
         type: 'error',
       });
+    }
+  }
+
+  // Manual Offline JSON File Backup & Restore handlers
+  async function handleDownloadJsonBackup() {
+    setIsExportingJson(true);
+    try {
+      const backupData = await exportShopBackup(shop.id);
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const cleanShopName = shop.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.href = url;
+      a.download = `baithak_backup_${cleanShopName}_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setManualBackupMsg({
+        text: `✓ Offline backup file saved successfully! (${backupData.metadata.totalProducts} items, ${backupData.metadata.totalSales} sales)`,
+        type: 'success',
+      });
+      setTimeout(() => setManualBackupMsg(null), 5000);
+    } catch (err) {
+      setManualBackupMsg({
+        text: 'Backup export failed: ' + (err instanceof Error ? err.message : 'Error'),
+        type: 'error',
+      });
+    } finally {
+      setIsExportingJson(false);
+    }
+  }
+
+  async function handleImportJsonBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const confirmed = window.confirm(
+      `Restoring from "${file.name}" will merge and restore all shop products, sales, and khata records. Proceed?`
+    );
+    if (!confirmed) {
+      e.target.value = '';
+      return;
+    }
+
+    setIsImportingJson(true);
+    setManualBackupMsg({ text: 'Reading and restoring backup file…', type: 'success' });
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed.version || !parsed.tables) {
+        throw new Error('Invalid BaithakOS backup file format.');
+      }
+      await restoreShopBackup(parsed);
+      await refreshShop();
+      setManualBackupMsg({
+        text: `✓ Successfully restored shop from "${file.name}"!`,
+        type: 'success',
+      });
+      setTimeout(() => setManualBackupMsg(null), 5000);
+    } catch (err) {
+      setManualBackupMsg({
+        text: 'Failed to restore backup: ' + (err instanceof Error ? err.message : 'Invalid JSON file'),
+        type: 'error',
+      });
+    } finally {
+      setIsImportingJson(false);
+      e.target.value = '';
     }
   }
 
@@ -780,6 +856,59 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
             )}
           </div>
         )}
+      </div>
+
+      {/* 💾 Physical Offline File Backup Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2.5">
+          <div>
+            <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span>💾</span> Manual Offline Backup File (.json)
+            </div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Download your shop data as a physical file. Send it to WhatsApp or save on an SD card. Zero internet needed.
+            </div>
+          </div>
+          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300">
+            Physical File
+          </span>
+        </div>
+
+        {manualBackupMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-semibold border ${
+              manualBackupMsg.type === 'success'
+                ? 'bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
+                : 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
+            }`}
+          >
+            {manualBackupMsg.text}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={handleDownloadJsonBackup}
+            disabled={isExportingJson}
+            className="bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 active:scale-98 transition-transform disabled:opacity-60"
+          >
+            <span>{isExportingJson ? '⏳' : '📥'}</span>
+            <span>{isExportingJson ? 'Exporting File…' : 'Download Backup File (.json)'}</span>
+          </button>
+
+          <label className="bg-white dark:bg-slate-800 border-2 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750 text-gray-800 dark:text-slate-200 font-bold py-3 px-4 rounded-xl text-xs shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-transform">
+            <span>{isImportingJson ? '⏳' : '📂'}</span>
+            <span>{isImportingJson ? 'Restoring File…' : 'Restore from Backup File (.json)'}</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportJsonBackup}
+              disabled={isImportingJson}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Single Owner Account & Security Card */}
