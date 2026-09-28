@@ -19,6 +19,7 @@ export interface Shop {
   name: string;
   ownerName: string;
   phone?: string;
+  ownerEmail?: string;
   address?: string;
   gstin?: string;
   currencyCode: 'INR';

@@ -129,6 +129,29 @@ export async function cloudSyncPush(shopId: UUID): Promise<{ success: boolean; m
     // 1. Generate full offline snapshot
     const backup: ShopBackupData = await exportShopBackup(shopId);
 
+    // Attach email if available in shop or drive config
+    let email = backup.metadata.ownerEmail;
+    if (!email && typeof window !== 'undefined') {
+      try {
+        const drive = localStorage.getItem('baithak_google_drive_config');
+        if (drive) {
+          const parsed = JSON.parse(drive);
+          if (parsed.userEmail) email = parsed.userEmail;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const payload = {
+      ...backup,
+      ownerEmail: email || null,
+      metadata: {
+        ...backup.metadata,
+        ownerEmail: email || undefined,
+      },
+    };
+
     // 2. Upsert into Supabase shop_backups table
     const record = {
       shop_id: shopId,
@@ -136,7 +159,7 @@ export async function cloudSyncPush(shopId: UUID): Promise<{ success: boolean; m
       owner_name: backup.metadata.ownerName,
       total_products: backup.metadata.totalProducts,
       total_sales: backup.metadata.totalSales,
-      backup_payload: backup,
+      backup_payload: payload,
       updated_at: new Date().toISOString(),
     };
 
@@ -241,6 +264,7 @@ export async function findAndRestoreShop(query: {
   shopId?: string;
   shopName?: string;
   phone?: string;
+  email?: string;
 }): Promise<{ success: boolean; message: string; shopId?: UUID; shopName?: string }> {
   const client = getSupabaseClient();
   if (!client) {
@@ -256,7 +280,7 @@ export async function findAndRestoreShop(query: {
       q = q.ilike('shop_name', `%${query.shopName.trim()}%`);
     }
 
-    const { data, error } = await q.order('updated_at', { ascending: false }).limit(10);
+    const { data, error } = await q.order('updated_at', { ascending: false }).limit(20);
     if (error) {
       return { success: false, message: error.message };
     }
@@ -264,12 +288,35 @@ export async function findAndRestoreShop(query: {
     if (!data || data.length === 0) {
       return {
         success: false,
-        message: 'No matching shop found on Baithak Cloud. Please check your Shop ID or shop name.',
+        message: 'No matching shop found on Baithak Cloud.',
       };
     }
 
-    // If phone filter was specified, match phone inside backup_payload
     let match = data[0];
+
+    // Priority 1: Match Google Email if provided
+    if (query.email?.trim()) {
+      const targetEmail = query.email.trim().toLowerCase();
+      const foundWithEmail = data.find((row) => {
+        const payload = row.backup_payload as any;
+        const pEmail = payload?.ownerEmail?.toLowerCase();
+        const mEmail = payload?.metadata?.ownerEmail?.toLowerCase();
+        const sEmail = (payload?.tables?.shops?.[0] as any)?.ownerEmail?.toLowerCase();
+        return pEmail === targetEmail || mEmail === targetEmail || sEmail === targetEmail;
+      });
+
+      if (foundWithEmail) {
+        match = foundWithEmail;
+      } else if (!query.shopId && !query.shopName && !query.phone) {
+        // If user specifically asked to link by email and no shop exists
+        return {
+          success: false,
+          message: `No existing shop linked to ${query.email}. You can create your shop in seconds!`,
+        };
+      }
+    }
+
+    // Priority 2: Match phone if provided
     if (query.phone?.trim()) {
       const cleanTarget = query.phone.replace(/\D/g, '');
       const foundWithPhone = data.find((row) => {
@@ -288,6 +335,16 @@ export async function findAndRestoreShop(query: {
     }
 
     await restoreShopBackup(match.backup_payload as ShopBackupData);
+
+    // If email was provided, persist ownerEmail to local shop
+    if (query.email?.trim() && match.shop_id) {
+      try {
+        const db = getDB();
+        await db.shops.update(match.shop_id, { ownerEmail: query.email.trim() });
+      } catch {
+        // non-blocking
+      }
+    }
 
     return {
       success: true,

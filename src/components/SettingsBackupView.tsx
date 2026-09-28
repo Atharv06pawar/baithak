@@ -22,6 +22,8 @@ import {
   cloudSyncPull,
   isCloudConfigured,
 } from '@/lib/cloud/supabase';
+import { updateShop } from '@/lib/domain/shop';
+import { authenticateWithGoogle, instantGoogleLink } from '@/lib/cloud/googleAuth';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Shop } from '@/lib/types';
 
@@ -152,6 +154,38 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
       });
     } finally {
       setIsCloudPulling(false);
+    }
+  }
+
+  async function handleLinkGoogleAccount() {
+    try {
+      const res = await authenticateWithGoogle();
+      if (res.success && res.email) {
+        await updateShop(shop.id, { ownerEmail: res.email });
+        await cloudSyncPush(shop.id);
+        await refreshShop();
+        setCloudMsg({ text: `✓ Linked to Google account: ${res.email}! Multi-device & Drive synced.`, type: 'success' });
+        setTimeout(() => setCloudMsg(null), 5000);
+      } else if (res.requiresClientId) {
+        const email = window.prompt('Enter your Google Email (@gmail.com) to link Multi-Device Sync & Drive Backup:');
+        if (email && email.includes('@')) {
+          const instantRes = await instantGoogleLink(email, shop.ownerName);
+          if (instantRes.success) {
+            await updateShop(shop.id, { ownerEmail: email.trim().toLowerCase() });
+            await cloudSyncPush(shop.id);
+            await refreshShop();
+            setCloudMsg({ text: `✓ Linked to Google account: ${email}!`, type: 'success' });
+            setTimeout(() => setCloudMsg(null), 5000);
+          }
+        }
+      } else {
+        setCloudMsg({ text: res.message, type: 'error' });
+      }
+    } catch (err) {
+      setCloudMsg({
+        text: 'Failed to link Google account: ' + (err instanceof Error ? err.message : 'Error'),
+        type: 'error',
+      });
     }
   }
 
@@ -501,6 +535,12 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
             <span className="font-bold text-gray-900 dark:text-white">{shop.name}</span>
           </div>
           <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-slate-400">Linked Google Account:</span>
+            <span className="font-mono text-gray-900 dark:text-white font-semibold">
+              {shop.ownerEmail || driveConfig?.userEmail || 'Not linked to Google'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
             <span className="text-gray-500 dark:text-slate-400">Registered Phone:</span>
             <span className="font-mono text-gray-900 dark:text-white font-semibold">{shop.phone || 'Not set'}</span>
           </div>
@@ -512,10 +552,33 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
             </span>
           </div>
           <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-slate-400">Drive Auto-Backup:</span>
+            <span className="text-blue-700 dark:text-blue-300 font-semibold">
+              {driveConnected ? '✓ Active every 5 mins' : 'Connect Drive below'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
             <span className="text-gray-500 dark:text-slate-400">Offline Resilience:</span>
             <span className="text-blue-700 dark:text-blue-300 font-semibold">100% Offline-First (Local IndexedDB)</span>
           </div>
         </div>
+
+        {/* 1-Tap Link Google Account button if not yet linked */}
+        {(!shop.ownerEmail && !driveConfig?.userEmail) && (
+          <button
+            type="button"
+            onClick={handleLinkGoogleAccount}
+            className="w-full bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-800 text-blue-950 dark:text-blue-200 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.28-2.09 3.66-5.18 3.66-9.12z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.27 21.43 7.33 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.16 0 9.99 0 12s.45 3.84 1.25 5.42l4.03-3.13z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.27 2.57 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"/>
+            </svg>
+            <span>Link Google Account (Free Multi-Device Login & Drive Backup)</span>
+          </button>
+        )}
       </div>
 
       {/* Google Drive Cloud Backup Card */}

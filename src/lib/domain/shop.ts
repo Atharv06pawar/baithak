@@ -13,6 +13,7 @@ interface CreateShopInput {
   name: string;
   ownerName: string;
   phone?: string;
+  ownerEmail?: string;
   address?: string;
 }
 
@@ -35,6 +36,7 @@ export async function createShop(input: CreateShopInput): Promise<Shop> {
     name: input.name.trim(),
     ownerName: input.ownerName.trim(),
     phone: input.phone?.trim(),
+    ownerEmail: input.ownerEmail?.trim(),
     address: input.address?.trim(),
     currencyCode: 'INR',
     timezone: 'Asia/Kolkata',
@@ -95,3 +97,21 @@ export async function hasShop(): Promise<boolean> {
   const count = await db.shops.count();
   return count > 0;
 }
+
+/** Update existing shop details (e.g. link owner email, phone, name). */
+export async function updateShop(shopId: string, updates: Partial<Shop>): Promise<Shop> {
+  const db = getDB();
+  const existing = await db.shops.get(shopId);
+  if (!existing) throw new Error('Shop not found');
+
+  const updated: Shop = {
+    ...existing,
+    ...updates,
+    id: shopId,
+    updatedAt: Date.now(),
+  };
+
+  await db.shops.put(updated);
+  return updated;
+}
+

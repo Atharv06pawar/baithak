@@ -15,6 +15,7 @@ export interface ShopBackupData {
   metadata: {
     shopName: string;
     ownerName: string;
+    ownerEmail?: string;
     totalProducts: number;
     totalSales: number;
   };
@@ -86,7 +87,7 @@ export async function exportShopBackup(shopId: UUID): Promise<ShopBackupData> {
     db.analytics_snapshots.where('shopId').equals(shopId).toArray(),
   ]);
 
-  const currentShop = shops[0];
+  const currentShop = shops[0] as { name?: string; ownerName?: string; ownerEmail?: string } | undefined;
 
   return {
     version: 1,
@@ -95,6 +96,7 @@ export async function exportShopBackup(shopId: UUID): Promise<ShopBackupData> {
     metadata: {
       shopName: currentShop?.name || 'Baithak Shop',
       ownerName: currentShop?.ownerName || 'Owner',
+      ownerEmail: currentShop?.ownerEmail || undefined,
       totalProducts: products.length,
       totalSales: sales.length,
     },
