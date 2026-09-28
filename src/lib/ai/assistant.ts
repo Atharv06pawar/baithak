@@ -184,12 +184,13 @@ export async function askBaithak(shopId: UUID, query: string): Promise<Assistant
 
   // Fallback
   return {
-    answer: "I can answer questions based on your verified shop records: today's sales, reorder suggestions, dead stock, customer udhaar, or cash status. What would you like to know?",
+    answer:
+      'This feature is currently in development. Please use the preset messages below to view verified shop metrics (e.g. today\'s business, reorders, dead stock, or pending udhaar).',
     citedMetrics: [],
     suggestedFollowUps: [
       'How was business today?',
       'What should I order?',
-      'Which products are dead stock?',
+      'Which products aren’t moving?',
       'How much udhaar is pending?',
     ],
   };

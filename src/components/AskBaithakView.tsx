@@ -16,7 +16,7 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
     {
       role: 'assistant',
       content:
-        'Namaste! I am Ask Baithak, your shop assistant. Ask me anything about today’s sales, reorder needs, dead stock, or customer udhaar.',
+        'Namaste! I am Ask Baithak. Free-form custom AI questions are currently in development — please tap any of the preset messages below to view your verified sales, reorder needs, dead stock, and customer udhaar.',
       suggestedFollowUps: [
         'How was business today?',
         'What should I order?',
@@ -53,7 +53,14 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error checking shop records. Please try again.',
+          content:
+            'This feature is currently in development. Please use the preset messages below to view your verified shop metrics.',
+          suggestedFollowUps: [
+            'How was business today?',
+            'What should I order?',
+            'Which products aren’t moving?',
+            'How much udhaar is pending?',
+          ],
         },
       ]);
     } finally {
@@ -115,9 +122,14 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
         <div className="flex items-center gap-2">
           <span className="text-2xl">🤖</span>
           <div>
-            <div className="font-black text-base text-gray-900 dark:text-white">Ask Baithak</div>
+            <div className="flex items-center gap-2">
+              <div className="font-black text-base text-gray-900 dark:text-white">Ask Baithak</div>
+              <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                In Development
+              </span>
+            </div>
             <div className="text-xs text-gray-500 dark:text-slate-400">
-              Honest assistant powered strictly by verified shop facts
+              Please use preset messages below for verified shop metrics
             </div>
           </div>
         </div>
