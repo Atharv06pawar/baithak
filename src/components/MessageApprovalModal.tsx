@@ -108,22 +108,22 @@ export default function MessageApprovalModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl animate-in fade-in duration-200 overflow-hidden cursor-default"
+        className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl animate-in fade-in duration-200 overflow-hidden cursor-default border border-transparent dark:border-slate-800"
       >
         {/* Modal Header */}
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
+        <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/80 dark:bg-slate-950/80">
           <div>
-            <div className="font-bold text-base text-gray-900 flex items-center gap-1.5">
+            <div className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-1.5">
               <span>🛡️</span>
               <span>{title}</span>
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 dark:text-slate-400">
               Owner Review & Approval: Select who to ping and verify the message.
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-200/80 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-bold"
+            className="w-8 h-8 rounded-full bg-gray-200/80 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 flex items-center justify-center text-sm font-bold"
           >
             ✕
           </button>
@@ -131,7 +131,7 @@ export default function MessageApprovalModal({
 
         {/* Notice Banner */}
         {sentNotice && (
-          <div className="bg-green-50 border-b border-green-200 p-2.5 text-xs text-green-800 font-semibold text-center">
+          <div className="bg-green-50 dark:bg-green-950/60 border-b border-green-200 dark:border-green-800 p-2.5 text-xs text-green-800 dark:text-green-300 font-semibold text-center">
             {sentNotice}
           </div>
         )}
@@ -139,20 +139,20 @@ export default function MessageApprovalModal({
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Safety Notice */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed">
+          <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-900 dark:text-blue-200 leading-relaxed">
             <span className="font-bold">✓ Total Control:</span> No automated messages are sent without your click. Choose exactly who you want to ping below, check the preview, and tap to approve.
           </div>
 
           {/* Recipient Selection Section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-gray-700">
+              <span className="font-bold text-gray-700 dark:text-slate-300">
                 Select Recipients ({selectedIds.size} of {tasks.length} selected):
               </span>
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="text-blue-700 hover:text-blue-900 font-bold"
+                className="text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-bold"
               >
                 {selectedIds.size === tasks.filter((t) => !!t.recipientPhone).length
                   ? 'Deselect All'
@@ -162,7 +162,7 @@ export default function MessageApprovalModal({
 
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {tasks.length === 0 ? (
-                <div className="text-xs text-gray-400 py-3 text-center">No pending recipients found.</div>
+                <div className="text-xs text-gray-400 dark:text-slate-500 py-3 text-center">No pending recipients found.</div>
               ) : (
                 tasks.map((task) => {
                   const isSelected = selectedIds.has(task.id);
@@ -175,8 +175,8 @@ export default function MessageApprovalModal({
                       onClick={() => setActiveTaskId(task.id)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                         isActive
-                          ? 'border-blue-500 bg-blue-50/50 shadow-sm'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-sm'
+                          : 'border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 bg-white dark:bg-slate-900'
                       }`}
                     >
                       <input
@@ -187,25 +187,25 @@ export default function MessageApprovalModal({
                           e.stopPropagation();
                           toggleSelect(task.id);
                         }}
-                        className="w-4 h-4 text-blue-900 rounded border-gray-300 focus:ring-blue-500 cursor-pointer disabled:opacity-40"
+                        className="w-4 h-4 text-blue-900 rounded border-gray-300 dark:border-slate-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40"
                       />
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-xs text-gray-900 truncate">
+                          <span className="font-bold text-xs text-gray-900 dark:text-white truncate">
                             {task.recipientName || task.title}
                           </span>
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
                               task.type === 'low_stock'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-purple-100 text-purple-800'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                : 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
                             }`}
                           >
                             {task.type === 'low_stock' ? 'Supplier' : 'Khata'}
                           </span>
                         </div>
-                        <div className="text-[11px] text-gray-500 truncate flex items-center gap-1.5 mt-0.5">
+                        <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
                           <span>{hasPhone ? `📞 ${task.recipientPhone}` : '⚠️ No phone saved'}</span>
                           <span>•</span>
                           <span>{task.description}</span>
@@ -220,12 +220,12 @@ export default function MessageApprovalModal({
 
           {/* Active Message Preview & Customization */}
           {activeTask && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 space-y-2.5">
+            <div className="bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-gray-800">
+                <span className="font-bold text-gray-800 dark:text-white">
                   Message Preview for {activeTask.recipientName || 'Recipient'}:
                 </span>
-                <span className="text-[11px] text-gray-500">Editable before sending</span>
+                <span className="text-[11px] text-gray-500 dark:text-slate-400">Editable before sending</span>
               </div>
 
               <textarea
@@ -237,12 +237,12 @@ export default function MessageApprovalModal({
                   })
                 }
                 rows={3}
-                className="w-full text-xs p-2.5 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans"
+                className="w-full text-xs p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans text-gray-900 dark:text-white"
                 placeholder="Type your message..."
               />
 
               <div className="flex items-center justify-between gap-2 pt-1">
-                <div className="text-[11px] text-gray-500">
+                <div className="text-[11px] text-gray-500 dark:text-slate-400">
                   Destination: {activeTask.recipientPhone ? `WhatsApp (+${activeTask.recipientPhone})` : 'Phone missing'}
                 </div>
 
@@ -261,8 +261,8 @@ export default function MessageApprovalModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3.5 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-          <div className="text-xs text-gray-500 font-medium">
+        <div className="p-3.5 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/80 flex items-center justify-between">
+          <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">
             {selectedIds.size} recipient{selectedIds.size === 1 ? '' : 's'} approved to ping
           </div>
 
@@ -270,7 +270,7 @@ export default function MessageApprovalModal({
             <button
               type="button"
               onClick={onClose}
-              className="border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-bold py-2 px-4 rounded-xl"
+              className="border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs font-bold py-2 px-4 rounded-xl"
             >
               Done / Close
             </button>

@@ -48,11 +48,11 @@ export default function ActionCenterView({ shopId }: { shopId: UUID }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-y-auto p-4 space-y-5">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-y-auto p-4 space-y-5">
       {/* Header */}
       <div>
-        <div className="font-black text-xl text-gray-900">⚡ Action Center</div>
-        <div className="text-xs text-gray-500">
+        <div className="font-black text-xl text-gray-900 dark:text-white">⚡ Action Center</div>
+        <div className="text-xs text-gray-500 dark:text-slate-400">
           Prioritized, verifiable recommendations to prevent stockouts and loss of money.
         </div>
       </div>
@@ -78,11 +78,11 @@ export default function ActionCenterView({ shopId }: { shopId: UUID }) {
 
       {/* Prioritized Alert Cards */}
       <div className="space-y-3">
-        <div className="font-bold text-sm text-gray-800">Priority Alerts ({alerts.length})</div>
+        <div className="font-bold text-sm text-gray-800 dark:text-white">Priority Alerts ({alerts.length})</div>
         {alerts.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 text-center border border-gray-200 text-gray-500">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 text-center border border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400">
             <div className="text-3xl mb-1">🟢</div>
-            <div className="font-bold text-sm text-gray-800">All Systems Normal</div>
+            <div className="font-bold text-sm text-gray-800 dark:text-white">All Systems Normal</div>
             <div className="text-xs mt-1">No critical stockouts or dead inventory detected.</div>
           </div>
         ) : (
@@ -91,12 +91,12 @@ export default function ActionCenterView({ shopId }: { shopId: UUID }) {
               key={alert.id}
               className={`rounded-2xl p-4 border space-y-2 shadow-sm ${
                 alert.severity === 'critical'
-                  ? 'bg-red-50 border-red-200 text-red-900'
+                  ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-900 dark:text-red-300'
                   : alert.severity === 'warning'
-                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300'
                   : alert.severity === 'positive'
-                  ? 'bg-green-50 border-green-200 text-green-900'
-                  : 'bg-blue-50 border-blue-200 text-blue-900'
+                  ? 'bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-900 dark:text-green-300'
+                  : 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function ActionCenterView({ shopId }: { shopId: UUID }) {
               </div>
 
               <div className="text-xs opacity-90">{alert.reason}</div>
-              <div className="bg-white/60 p-2.5 rounded-xl text-xs font-mono">{alert.evidence}</div>
+              <div className="bg-white/60 dark:bg-slate-900/60 p-2.5 rounded-xl text-xs font-mono border border-transparent dark:border-slate-800">{alert.evidence}</div>
               <div className="text-xs font-bold pt-1">
                 👉 Recommended Action: <span className="underline">{alert.recommendedAction}</span>
               </div>
@@ -124,30 +124,30 @@ export default function ActionCenterView({ shopId }: { shopId: UUID }) {
 
       {/* Explainable Reorders Section */}
       <div className="space-y-3">
-        <div className="font-bold text-sm text-gray-800">
+        <div className="font-bold text-sm text-gray-800 dark:text-white">
           Reorder Recommendations ({reorders.length})
         </div>
         {reorders.length === 0 ? (
-          <div className="bg-white p-4 rounded-xl border text-center text-xs text-gray-500">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 text-center text-xs text-gray-500 dark:text-slate-400">
             No items currently need reordering.
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800 overflow-hidden">
             {reorders.map((r) => (
               <div key={r.productId} className="p-3.5 space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-sm text-gray-900">{r.productName}</span>
+                  <span className="font-bold text-sm text-gray-900 dark:text-white">{r.productName}</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${
                       r.urgency === 'critical'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-amber-100 text-amber-700'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                     }`}
                   >
                     Order {r.recommendedOrderQuantity} units
                   </span>
                 </div>
-                <div className="text-xs text-gray-500 leading-relaxed font-mono bg-gray-50 p-2 rounded-lg">
+                <div className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed font-mono bg-gray-50 dark:bg-slate-800 p-2 rounded-lg">
                   {r.explanation}
                 </div>
               </div>
@@ -159,19 +159,19 @@ export default function ActionCenterView({ shopId }: { shopId: UUID }) {
       {/* Dead Stock Section */}
       {deadStock.length > 0 && (
         <div className="space-y-3">
-          <div className="font-bold text-sm text-gray-800">
+          <div className="font-bold text-sm text-gray-800 dark:text-white">
             Dead Stock Overview ({deadStock.length} items)
           </div>
-          <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800 overflow-hidden">
             {deadStock.slice(0, 5).map((d) => (
               <div key={d.productId} className="p-3 flex justify-between items-center text-xs">
                 <div>
-                  <div className="font-bold text-gray-900">{d.productName}</div>
-                  <div className="text-gray-400">0 sales in last 3 weeks</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{d.productName}</div>
+                  <div className="text-gray-400 dark:text-slate-500">0 sales in last 3 weeks</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-amber-800">{formatMoney(d.totalCapitalLocked)}</div>
-                  <div className="text-gray-400">{d.stockQuantity} units locked</div>
+                  <div className="font-bold text-amber-800 dark:text-amber-400">{formatMoney(d.totalCapitalLocked)}</div>
+                  <div className="text-gray-400 dark:text-slate-500">{d.stockQuantity} units locked</div>
                 </div>
               </div>
             ))}

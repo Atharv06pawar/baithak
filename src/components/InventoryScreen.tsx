@@ -140,9 +140,9 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-hidden">
       {/* Sub-navigation */}
-      <div className="bg-white border-b border-gray-200 px-3 flex gap-2 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-3 flex gap-2 overflow-x-auto">
         {(
           [
             { id: 'products' as SubTab, label: '📦 Products & Stock' },
@@ -156,8 +156,8 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
             onClick={() => setActiveTab(tab.id)}
             className={`py-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
               activeTab === tab.id
-                ? 'border-blue-900 text-blue-900'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                ? 'border-blue-900 text-blue-900 dark:border-blue-400 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
             }`}
           >
             {tab.label}
@@ -187,7 +187,7 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="font-bold text-gray-800 text-sm">
+              <span className="font-bold text-gray-800 dark:text-white text-sm">
                 Catalog ({products.length} items)
               </span>
               <button
@@ -198,13 +198,13 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800 overflow-hidden">
               {products.map((p) => (
                 <div key={p.id} className="p-3 flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-gray-900 truncate">{p.name}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      Sell: <span className="font-semibold text-gray-800">{formatMoney(p.sellingPrice)}</span> • Buy:{' '}
+                    <div className="font-bold text-sm text-gray-900 dark:text-white truncate">{p.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                      Sell: <span className="font-semibold text-gray-800 dark:text-slate-200">{formatMoney(p.sellingPrice)}</span> • Buy:{' '}
                       {p.purchasePrice > 0 ? formatMoney(p.purchasePrice) : '₹0'}
                     </div>
                   </div>
@@ -212,15 +212,15 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
                     <span
                       className={`text-xs px-2 py-1 rounded-lg font-bold ${
                         p.stockQuantity <= p.minimumStock
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-green-100 text-green-800'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300'
                       }`}
                     >
                       {p.stockQuantity} {p.unit}
                     </span>
                     <button
                       onClick={() => setAdjustingProduct(p)}
-                      className="border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-lg"
+                      className="border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs px-2 py-1 rounded-lg"
                       title="Adjust Stock"
                     >
                       Adjust
@@ -236,7 +236,7 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
         {activeTab === 'purchases' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="font-bold text-gray-800 text-sm">Supplier Purchase Invoices</span>
+              <span className="font-bold text-gray-800 dark:text-white text-sm">Supplier Purchase Invoices</span>
               <button
                 onClick={() => setShowRecordPurchase(true)}
                 className="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold py-2 px-3 rounded-xl shadow"
@@ -246,23 +246,23 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
             </div>
 
             {purchases.length === 0 ? (
-              <div className="text-center text-gray-400 py-12">
+              <div className="text-center text-gray-400 dark:text-slate-500 py-12">
                 <div className="text-3xl mb-1">🚚</div>
                 <div className="text-sm font-medium">No purchases recorded yet</div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800">
                 {purchases.map((pur) => (
                   <div key={pur.id} className="p-3 flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-sm text-gray-900">
+                      <div className="font-bold text-sm text-gray-900 dark:text-white">
                         {pur.supplierName || 'Wholesale Supplier'}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">
                         Inv: {pur.invoiceNumber || 'N/A'} • {new Date(pur.purchaseDate).toLocaleDateString()}
                       </div>
                     </div>
-                    <div className="font-bold text-base text-gray-900">{formatMoney(pur.total)}</div>
+                    <div className="font-bold text-base text-gray-900 dark:text-white">{formatMoney(pur.total)}</div>
                   </div>
                 ))}
               </div>
@@ -274,7 +274,7 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
         {activeTab === 'suppliers' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="font-bold text-gray-800 text-sm">Local Suppliers & Agencies</span>
+              <span className="font-bold text-gray-800 dark:text-white text-sm">Local Suppliers & Agencies</span>
               <button
                 onClick={() => setShowAddSupplier(true)}
                 className="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold py-2 px-3 rounded-xl shadow"
@@ -283,16 +283,16 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800">
               {suppliers.map((s) => (
                 <div key={s.id} className="p-3 flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-sm text-gray-900">{s.name}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="font-bold text-sm text-gray-900 dark:text-white">{s.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                       Contact: {s.contactName || 'N/A'} • Phone: {s.phone || 'N/A'}
                     </div>
                   </div>
-                  <span className="text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded-lg font-semibold">
+                  <span className="text-xs bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-transparent dark:border-blue-800 px-2 py-1 rounded-lg font-semibold">
                     Lead: {s.leadTimeDays} days
                   </span>
                 </div>
@@ -304,31 +304,31 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
         {/* Tab 4: Adjustments */}
         {activeTab === 'adjustments' && (
           <div className="space-y-3">
-            <div className="font-bold text-gray-800 text-sm">Stock Adjustments & Waste Audit</div>
+            <div className="font-bold text-gray-800 dark:text-white text-sm">Stock Adjustments & Waste Audit</div>
             {adjustments.length === 0 ? (
-              <div className="text-center text-gray-400 py-12">
+              <div className="text-center text-gray-400 dark:text-slate-500 py-12">
                 <div className="text-3xl mb-1">⚖️</div>
                 <div className="text-sm font-medium">No stock adjustments recorded</div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800">
                 {adjustments.map((a) => (
                   <div key={a.id} className="p-3 flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-sm text-gray-900">{a.productName}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="font-bold text-sm text-gray-900 dark:text-white">{a.productName}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">
                         {a.adjustmentType} • Reason: {a.reason || 'None specified'}
                       </div>
                     </div>
                     <div className="text-right">
                       <span
                         className={`font-bold text-sm ${
-                          a.quantityChange > 0 ? 'text-green-700' : 'text-red-600'
+                          a.quantityChange > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                         }`}
                       >
                         {a.quantityChange > 0 ? `+${a.quantityChange}` : a.quantityChange}
                       </span>
-                      <div className="text-xs text-gray-400">Bal: {a.quantityAfter}</div>
+                      <div className="text-xs text-gray-400 dark:text-slate-500">Bal: {a.quantityAfter}</div>
                     </div>
                   </div>
                 ))}
@@ -347,16 +347,16 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateProduct}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="font-bold text-lg text-gray-900 border-b pb-2">Add New Product</div>
+            <div className="font-bold text-lg text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-2">Add New Product</div>
             <input
               type="text"
               value={prodName}
               onChange={(e) => setProdName(e.target.value)}
               placeholder="Product Name *"
               required
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <div className="grid grid-cols-2 gap-2">
               <input
@@ -365,14 +365,14 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
                 onChange={(e) => setProdSell(e.target.value)}
                 placeholder="Selling Price (₹) *"
                 required
-                className="border rounded-xl px-3 py-2 text-sm"
+                className="border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
               />
               <input
                 type="number"
                 value={prodBuy}
                 onChange={(e) => setProdBuy(e.target.value)}
                 placeholder="Purchase Cost (₹)"
-                className="border rounded-xl px-3 py-2 text-sm"
+                className="border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -381,27 +381,27 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
                 value={prodStock}
                 onChange={(e) => setProdStock(e.target.value)}
                 placeholder="Opening Stock"
-                className="border rounded-xl px-3 py-2 text-sm"
+                className="border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
               />
               <input
                 type="number"
                 value={prodMinStock}
                 onChange={(e) => setProdMinStock(e.target.value)}
                 placeholder="Min Alert Stock"
-                className="border rounded-xl px-3 py-2 text-sm"
+                className="border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
               />
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowAddProduct(false)}
-                className="flex-1 border py-2.5 rounded-xl font-bold text-xs"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-blue-900 text-white py-2.5 rounded-xl font-bold text-xs shadow"
+                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white py-2.5 rounded-xl font-bold text-xs shadow"
               >
                 Save
               </button>
@@ -419,30 +419,30 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateSupplier}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="font-bold text-lg text-gray-900 border-b pb-2">Add Supplier</div>
+            <div className="font-bold text-lg text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-2">Add Supplier</div>
             <input
               type="text"
               value={supName}
               onChange={(e) => setSupName(e.target.value)}
               placeholder="Agency / Supplier Name *"
               required
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <input
               type="text"
               value={supContact}
               onChange={(e) => setSupContact(e.target.value)}
               placeholder="Contact Person"
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <input
               type="tel"
               value={supPhone}
               onChange={(e) => setSupPhone(e.target.value)}
               placeholder="Phone Number"
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <input
               type="number"
@@ -450,19 +450,19 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
               onChange={(e) => setSupLeadDays(e.target.value)}
               placeholder="Lead Time Days"
               min="1"
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowAddSupplier(false)}
-                className="flex-1 border py-2.5 rounded-xl font-bold text-xs"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-blue-900 text-white py-2.5 rounded-xl font-bold text-xs shadow"
+                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white py-2.5 rounded-xl font-bold text-xs shadow"
               >
                 Save
               </button>
@@ -480,18 +480,18 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleStockAdjustment}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="font-bold text-lg text-gray-900 border-b pb-2">
+            <div className="font-bold text-lg text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-2">
               Adjust Stock: {adjustingProduct.name}
             </div>
-            <div className="text-xs text-gray-500">
-              Current Stock: <span className="font-bold text-gray-800">{adjustingProduct.stockQuantity}</span>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Current Stock: <span className="font-bold text-gray-800 dark:text-slate-200">{adjustingProduct.stockQuantity}</span>
             </div>
             <select
               value={adjType}
               onChange={(e) => setAdjType(e.target.value as any)}
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             >
               <option value="damage">Damage / Waste (-)</option>
               <option value="expiry">Expired Stock (-)</option>
@@ -504,26 +504,26 @@ export default function InventoryScreen({ shopId }: { shopId: UUID }) {
               onChange={(e) => setAdjQtyChange(e.target.value)}
               placeholder="Quantity Change (e.g. -2 or +5) *"
               required
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <input
               type="text"
               value={adjReason}
               onChange={(e) => setAdjReason(e.target.value)}
               placeholder="Reason / Note"
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setAdjustingProduct(null)}
-                className="flex-1 border py-2.5 rounded-xl font-bold text-xs"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-blue-900 text-white py-2.5 rounded-xl font-bold text-xs shadow"
+                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white py-2.5 rounded-xl font-bold text-xs shadow"
               >
                 Apply Adjustment
               </button>

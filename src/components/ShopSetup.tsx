@@ -214,21 +214,21 @@ export default function ShopSetup() {
         {/* Google Email Instant Connection Modal */}
         {showGoogleModal && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-5 max-w-sm w-full text-gray-900 space-y-4 shadow-2xl">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 max-w-sm w-full text-gray-900 dark:text-white space-y-4 shadow-2xl border border-transparent dark:border-slate-800">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-lg">
                     <span>🌐</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-base text-gray-900">Sign in with Google</h3>
-                    <p className="text-xs text-gray-500">100% Free • Multi-Device Sync & Drive Backup</p>
+                    <h3 className="font-bold text-base text-gray-900 dark:text-white">Sign in with Google</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">100% Free • Multi-Device Sync & Drive Backup</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowGoogleModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-lg font-bold"
                 >
                   ✕
                 </button>
@@ -236,7 +236,7 @@ export default function ShopSetup() {
 
               <form onSubmit={handleInstantGoogleSubmit} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                     Your Google Email (@gmail.com)
                   </label>
                   <input
@@ -245,10 +245,10 @@ export default function ShopSetup() {
                     value={googleEmailInput}
                     onChange={(e) => setGoogleEmailInput(e.target.value)}
                     placeholder="e.g. shopowner@gmail.com"
-                    className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                     autoFocus
                   />
-                  <p className="text-[11px] text-gray-500 mt-1">
+                  <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
                     Used to automatically find and sync your shop across all your phones, tablets, and laptops.
                   </p>
                 </div>
@@ -271,11 +271,11 @@ export default function ShopSetup() {
 
   if (step === 'done') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-green-50">
+      <div className="flex items-center justify-center min-h-screen bg-green-50 dark:bg-slate-950">
         <div className="text-center p-6 max-w-sm">
           <div className="text-6xl mb-4">✓</div>
-          <div className="text-2xl font-bold text-green-800">{doneMessage}</div>
-          <div className="text-green-600 mt-2">Opening your synchronized dashboard…</div>
+          <div className="text-2xl font-bold text-green-800 dark:text-green-400">{doneMessage}</div>
+          <div className="text-green-600 dark:text-green-300 mt-2">Opening your synchronized dashboard…</div>
         </div>
       </div>
     );
@@ -283,17 +283,17 @@ export default function ShopSetup() {
 
   if (step === 'link') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-950 px-6">
         <div className="max-w-sm w-full">
           <button
             onClick={() => setStep('welcome')}
-            className="text-gray-400 text-sm mb-6 flex items-center gap-1"
+            className="text-gray-400 dark:text-slate-400 text-sm mb-6 flex items-center gap-1"
           >
             ← Back
           </button>
 
-          <div className="text-2xl font-bold text-gray-900 mb-1">Link to Existing Shop</div>
-          <div className="text-gray-500 text-sm mb-4">
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Link to Existing Shop</div>
+          <div className="text-gray-500 dark:text-slate-400 text-sm mb-4">
             Log into your shop on this device. Enter your Shop ID, or search by Shop Name / Mobile Number.
           </div>
 
@@ -303,7 +303,7 @@ export default function ShopSetup() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isGoogleLoading}
-              className="w-full bg-white hover:bg-gray-50 text-gray-800 border-2 border-gray-300 py-3 px-4 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2.5 active:scale-95 transition-all disabled:opacity-60"
+              className="w-full bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-800 dark:text-slate-200 border-2 border-gray-300 dark:border-slate-700 py-3 px-4 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2.5 active:scale-95 transition-all disabled:opacity-60"
             >
               <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                 <path
@@ -328,14 +328,14 @@ export default function ShopSetup() {
           </div>
 
           <div className="relative flex py-1 items-center mb-4">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-2 text-[10px] text-gray-400 uppercase font-bold">Or Enter Shop Details</span>
-            <div className="flex-grow border-t border-gray-300"></div>
+            <div className="flex-grow border-t border-gray-300 dark:border-slate-800"></div>
+            <span className="flex-shrink mx-2 text-[10px] text-gray-400 dark:text-slate-500 uppercase font-bold">Or Enter Shop Details</span>
+            <div className="flex-grow border-t border-gray-300 dark:border-slate-800"></div>
           </div>
 
           <form onSubmit={handleLinkShop} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                 Shop ID (Preferred)
               </label>
               <input
@@ -343,12 +343,12 @@ export default function ShopSetup() {
                 value={linkShopId}
                 onChange={(e) => setLinkShopId(e.target.value)}
                 placeholder="e.g. 9f8e... (from Settings of main device)"
-                className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                 Shop Name
               </label>
               <input
@@ -356,12 +356,12 @@ export default function ShopSetup() {
                 value={linkShopName}
                 onChange={(e) => setLinkShopName(e.target.value)}
                 placeholder="e.g. Sharma Paan House"
-                className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                 Owner Mobile Number
               </label>
               <input
@@ -369,12 +369,12 @@ export default function ShopSetup() {
                 value={linkPhone}
                 onChange={(e) => setLinkPhone(e.target.value)}
                 placeholder="10-digit registered mobile"
-                className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-700 rounded-xl p-3 text-xs font-medium" role="alert">
+              <div className="bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-xl p-3 text-xs font-medium" role="alert">
                 {error}
               </div>
             )}
@@ -394,25 +394,25 @@ export default function ShopSetup() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-950 px-6">
       <div className="max-w-sm w-full">
         <button
           onClick={() => setStep('welcome')}
-          className="text-gray-400 text-sm mb-6 flex items-center gap-1"
+          className="text-gray-400 dark:text-slate-400 text-sm mb-6 flex items-center gap-1"
         >
           ← Back
         </button>
 
-        <div className="text-2xl font-bold text-gray-900 mb-1">Tell us about your shop</div>
-        <div className="text-gray-500 text-sm mb-6">You can change this later in Settings.</div>
+        <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Tell us about your shop</div>
+        <div className="text-gray-500 dark:text-slate-400 text-sm mb-6">You can change this later in Settings.</div>
 
         {ownerEmail && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl p-3 text-xs mb-5 flex items-center justify-between">
+          <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 rounded-xl p-3 text-xs mb-5 flex items-center justify-between">
             <div className="flex items-center gap-1.5 truncate">
               <span>✓</span>
               <span className="truncate">Google Account: <strong>{ownerEmail}</strong></span>
             </div>
-            <span className="text-[10px] bg-blue-200 text-blue-950 font-bold px-1.5 py-0.5 rounded flex-shrink-0">
+            <span className="text-[10px] bg-blue-200 dark:bg-blue-900 text-blue-950 dark:text-blue-200 font-bold px-1.5 py-0.5 rounded flex-shrink-0">
               Synced
             </span>
           </div>
@@ -420,7 +420,7 @@ export default function ShopSetup() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="shopName">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" htmlFor="shopName">
               Shop Name *
             </label>
             <input
@@ -429,14 +429,14 @@ export default function ShopSetup() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sharma Paan House"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
               autoFocus
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="ownerName">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" htmlFor="ownerName">
               Your Name *
             </label>
             <input
@@ -445,13 +445,13 @@ export default function ShopSetup() {
               value={ownerName}
               onChange={(e) => setOwnerName(e.target.value)}
               placeholder="e.g. Ramesh Sharma"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="phone">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" htmlFor="phone">
               Phone Number (optional)
             </label>
             <input
@@ -460,12 +460,12 @@ export default function ShopSetup() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="10-digit mobile number"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-700 rounded-xl px-4 py-3 text-sm" role="alert">
+            <div className="bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-xl px-4 py-3 text-sm" role="alert">
               {error}
             </div>
           )}

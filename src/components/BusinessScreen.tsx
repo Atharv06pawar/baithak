@@ -189,9 +189,9 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
   );
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-hidden">
       {/* Navigation tabs */}
-      <div className="bg-white border-b border-gray-200 px-3 flex gap-2 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-3 flex gap-2 overflow-x-auto">
         {(
           [
             { id: 'udhaar' as BusinessTab, label: '📝 Udhaar (Khata)' },
@@ -205,8 +205,8 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
             onClick={() => setActiveTab(tab.id)}
             className={`py-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
               activeTab === tab.id
-                ? 'border-blue-900 text-blue-900'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                ? 'border-blue-900 text-blue-900 dark:border-blue-400 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
             }`}
           >
             {tab.label}
@@ -225,15 +225,15 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               </div>
               <button
                 onClick={() => setShowAddCustomer(true)}
-                className="bg-white text-amber-900 text-xs font-bold px-3 py-2 rounded-xl shadow hover:bg-amber-50"
+                className="bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-300 text-xs font-bold px-3 py-2 rounded-xl shadow hover:bg-amber-50 dark:hover:bg-slate-800"
               >
                 + New Customer
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800 overflow-hidden">
               {customers.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
+                <div className="text-center text-gray-400 dark:text-slate-500 py-12">
                   <div className="text-3xl mb-1">📝</div>
                   <div className="text-sm font-medium">No customers added yet</div>
                 </div>
@@ -241,19 +241,19 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                 customers.map((c) => (
                   <div key={c.id} className="p-3.5 flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-gray-900 truncate">{c.name}</div>
-                      <div className="text-xs text-gray-500">Phone: {c.phone || 'None'}</div>
+                      <div className="font-bold text-sm text-gray-900 dark:text-white truncate">{c.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">Phone: {c.phone || 'None'}</div>
                     </div>
 
                     <div className="text-right">
                       <div
                         className={`font-black text-sm ${
-                          c.currentBalance > 0 ? 'text-red-600' : 'text-green-700'
+                          c.currentBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'
                         }`}
                       >
                         {formatMoney(c.currentBalance)}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-400 dark:text-slate-500">
                         {c.currentBalance > 0 ? 'Udhaar Due' : 'Settled'}
                       </div>
                     </div>
@@ -276,14 +276,14 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                             if (url) window.open(url, '_blank');
                           }}
                           title="Send WhatsApp Khata Reminder"
-                          className="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs px-2 py-1.5 rounded-lg font-bold flex items-center"
+                          className="bg-green-50 dark:bg-green-950/40 hover:bg-green-100 dark:hover:bg-green-900/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 text-xs px-2 py-1.5 rounded-lg font-bold flex items-center"
                         >
                           <span>💬</span>
                         </button>
                       )}
                       <button
                         onClick={() => openCustomerStatement(c)}
-                        className="border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs px-2.5 py-1.5 rounded-lg font-medium"
+                        className="border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs px-2.5 py-1.5 rounded-lg font-medium"
                       >
                         Ledger
                       </button>
@@ -299,7 +299,7 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
         {activeTab === 'expenses' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="font-bold text-gray-800 text-sm">Shop Expenses</span>
+              <span className="font-bold text-gray-800 dark:text-white text-sm">Shop Expenses</span>
               <button
                 onClick={() => setShowAddExpense(true)}
                 className="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold py-2 px-3 rounded-xl shadow"
@@ -308,9 +308,9 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 divide-y divide-gray-100 dark:divide-slate-800 overflow-hidden">
               {expenses.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
+                <div className="text-center text-gray-400 dark:text-slate-500 py-12">
                   <div className="text-3xl mb-1">💸</div>
                   <div className="text-sm font-medium">No expenses recorded</div>
                 </div>
@@ -318,13 +318,13 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                 expenses.map((e) => (
                   <div key={e.id} className="p-3.5 flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-sm text-gray-900 capitalize">{e.category}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="font-bold text-sm text-gray-900 dark:text-white capitalize">{e.category}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">
                         {e.description || 'No note'} • {e.paymentMethod.toUpperCase()} •{' '}
                         {new Date(e.expenseDate).toLocaleDateString()}
                       </div>
                     </div>
-                    <div className="font-bold text-sm text-red-600">−{formatMoney(e.amount)}</div>
+                    <div className="font-bold text-sm text-red-600 dark:text-red-400">−{formatMoney(e.amount)}</div>
                   </div>
                 ))
               )}
@@ -335,9 +335,9 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
         {/* TAB 3: Cash Reconciliation */}
         {activeTab === 'reconciliation' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
-              <div className="font-bold text-base text-gray-900">End-of-Day Cash Drawer Check</div>
-              <div className="text-xs text-gray-500">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 space-y-3">
+              <div className="font-bold text-base text-gray-900 dark:text-white">End-of-Day Cash Drawer Check</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">
                 Count the physical cash in your drawer and enter it below. BaithakOS compares it against recorded transactions.
               </div>
 
@@ -347,33 +347,33 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                   value={declaredCashInput}
                   onChange={(e) => setDeclaredCashInput(e.target.value)}
                   placeholder="Actual Cash in Drawer (₹)"
-                  className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="flex-1 border border-gray-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                 />
               </div>
 
               {reconciliation && (
-                <div className="pt-3 border-t border-gray-100 space-y-2 text-xs">
-                  <div className="flex justify-between text-gray-600">
+                <div className="pt-3 border-t border-gray-100 dark:border-slate-800 space-y-2 text-xs">
+                  <div className="flex justify-between text-gray-600 dark:text-slate-400">
                     <span>Opening Cash Drawer:</span>
                     <span>{formatMoney(reconciliation.openingCash)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-gray-600 dark:text-slate-400">
                     <span>+ Cash Sales:</span>
-                    <span className="text-green-700 font-bold">+{formatMoney(reconciliation.cashSales)}</span>
+                    <span className="text-green-700 dark:text-green-400 font-bold">+{formatMoney(reconciliation.cashSales)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-gray-600 dark:text-slate-400">
                     <span>+ Cash Udhaar Collected:</span>
-                    <span className="text-green-700 font-bold">+{formatMoney(reconciliation.cashUdhaarCollected)}</span>
+                    <span className="text-green-700 dark:text-green-400 font-bold">+{formatMoney(reconciliation.cashUdhaarCollected)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-gray-600 dark:text-slate-400">
                     <span>− Cash Expenses:</span>
-                    <span className="text-red-600 font-bold">−{formatMoney(reconciliation.cashExpenses)}</span>
+                    <span className="text-red-600 dark:text-red-400 font-bold">−{formatMoney(reconciliation.cashExpenses)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-gray-600 dark:text-slate-400">
                     <span>− Cash Refunds:</span>
-                    <span className="text-red-600 font-bold">−{formatMoney(reconciliation.cashRefunds)}</span>
+                    <span className="text-red-600 dark:text-red-400 font-bold">−{formatMoney(reconciliation.cashRefunds)}</span>
                   </div>
-                  <div className="flex justify-between font-bold text-sm text-gray-900 pt-1 border-t">
+                  <div className="flex justify-between font-bold text-sm text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-slate-800">
                     <span>Expected Cash in Drawer:</span>
                     <span>{formatMoney(reconciliation.expectedCash)}</span>
                   </div>
@@ -382,8 +382,8 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                     <div
                       className={`p-3 rounded-xl mt-3 ${
                         reconciliation.isBalanced
-                          ? 'bg-green-50 text-green-900 border border-green-200'
-                          : 'bg-amber-50 text-amber-900 border border-amber-200'
+                          ? 'bg-green-50 dark:bg-green-950/40 text-green-900 dark:text-green-200 border border-green-200 dark:border-green-800'
+                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800'
                       }`}
                     >
                       <div className="font-bold text-sm flex justify-between">
@@ -393,9 +393,9 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
                       {!reconciliation.isBalanced && reconciliation.possibleCauses.length > 0 && (
                         <div className="mt-2 space-y-1 text-xs">
-                          <div className="font-semibold text-amber-800">Possible Causes (from recorded data):</div>
+                          <div className="font-semibold text-amber-800 dark:text-amber-300">Possible Causes (from recorded data):</div>
                           {reconciliation.possibleCauses.map((c, idx) => (
-                            <div key={idx} className="text-amber-700">• {c.description}</div>
+                            <div key={idx} className="text-amber-700 dark:text-amber-400">• {c.description}</div>
                           ))}
                         </div>
                       )}
@@ -410,17 +410,17 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
         {/* TAB 4: Daily Closing */}
         {activeTab === 'closing' && dayOverview && (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between border-b pb-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-200 dark:border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-800 pb-3">
                 <div>
-                  <div className="font-black text-lg text-gray-900">Today's Summary</div>
-                  <div className="text-xs text-gray-500">{dayOverview.dateStr}</div>
+                  <div className="font-black text-lg text-gray-900 dark:text-white">Today's Summary</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{dayOverview.dateStr}</div>
                 </div>
                 <span
                   className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase ${
                     dayOverview.summaryRecord?.status === 'closed'
-                      ? 'bg-gray-100 text-gray-600'
-                      : 'bg-green-100 text-green-800'
+                      ? 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'
+                      : 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300'
                   }`}
                 >
                   {dayOverview.summaryRecord?.status === 'closed' ? 'Closed' : 'Open'}
@@ -429,36 +429,36 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
 
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 p-3 rounded-xl">
-                  <div className="text-xs text-gray-500">Total Revenue</div>
-                  <div className="text-lg font-black text-blue-900">
+                <div className="bg-gray-50 dark:bg-slate-800/60 p-3 rounded-xl border border-transparent dark:border-slate-800">
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Total Revenue</div>
+                  <div className="text-lg font-black text-blue-900 dark:text-blue-400">
                     {formatMoney(dayOverview.totalSales)}
                   </div>
-                  <div className="text-xs text-gray-400">{dayOverview.totalTransactions} bills</div>
+                  <div className="text-xs text-gray-400 dark:text-slate-500">{dayOverview.totalTransactions} bills</div>
                 </div>
 
-                <div className="bg-gray-50 p-3 rounded-xl">
-                  <div className="text-xs text-gray-500">Gross Margin</div>
-                  <div className="text-lg font-black text-green-700">
+                <div className="bg-gray-50 dark:bg-slate-800/60 p-3 rounded-xl border border-transparent dark:border-slate-800">
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Gross Margin</div>
+                  <div className="text-lg font-black text-green-700 dark:text-green-400">
                     {formatMoney(dayOverview.estimatedGrossProfit)}
                   </div>
-                  <div className="text-xs text-gray-400">Est. Profit</div>
+                  <div className="text-xs text-gray-400 dark:text-slate-500">Est. Profit</div>
                 </div>
 
-                <div className="bg-gray-50 p-3 rounded-xl">
-                  <div className="text-xs text-gray-500">Cash vs UPI</div>
-                  <div className="text-sm font-bold text-gray-800 mt-1">
+                <div className="bg-gray-50 dark:bg-slate-800/60 p-3 rounded-xl border border-transparent dark:border-slate-800">
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Cash vs UPI</div>
+                  <div className="text-sm font-bold text-gray-800 dark:text-slate-200 mt-1">
                     Cash: {formatMoney(dayOverview.cashSales)}
                   </div>
-                  <div className="text-xs text-gray-500">UPI: {formatMoney(dayOverview.upiSales)}</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">UPI: {formatMoney(dayOverview.upiSales)}</div>
                 </div>
 
-                <div className="bg-gray-50 p-3 rounded-xl">
-                  <div className="text-xs text-gray-500">Udhaar Movement</div>
-                  <div className="text-sm font-bold text-amber-700 mt-1">
+                <div className="bg-gray-50 dark:bg-slate-800/60 p-3 rounded-xl border border-transparent dark:border-slate-800">
+                  <div className="text-xs text-gray-500 dark:text-slate-400">Udhaar Movement</div>
+                  <div className="text-sm font-bold text-amber-700 dark:text-amber-400 mt-1">
                     Added: {formatMoney(dayOverview.udhaarSales)}
                   </div>
-                  <div className="text-xs text-green-600">
+                  <div className="text-xs text-green-600 dark:text-green-400">
                     Recv: {formatMoney(dayOverview.udhaarCollected)}
                   </div>
                 </div>
@@ -484,21 +484,21 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateExpense}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="font-bold text-lg text-gray-900 border-b pb-2">Record Shop Expense</div>
+            <div className="font-bold text-lg text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-2">Record Shop Expense</div>
             <input
               type="number"
               value={expAmount}
               onChange={(e) => setExpAmount(e.target.value)}
               placeholder="Amount (₹) *"
               required
-              className="w-full border rounded-xl px-3 py-2 text-base font-semibold"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-base font-semibold bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <select
               value={expCategory}
               onChange={(e) => setExpCategory(e.target.value as any)}
-              className="w-full border rounded-xl px-3 py-2 text-sm capitalize"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm capitalize bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             >
               {[
                 'miscellaneous',
@@ -519,7 +519,7 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               value={expDesc}
               onChange={(e) => setExpDesc(e.target.value)}
               placeholder="Description (e.g. Chai, Sweeper, Tape)"
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <div className="flex gap-2">
               {(['cash', 'upi'] as const).map((m) => (
@@ -527,8 +527,8 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
                   type="button"
                   key={m}
                   onClick={() => setExpMethod(m)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold border ${
-                    expMethod === m ? 'bg-blue-900 text-white' : 'bg-gray-50'
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold border border-gray-300 dark:border-slate-700 ${
+                    expMethod === m ? 'bg-blue-900 text-white' : 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300'
                   }`}
                 >
                   {m.toUpperCase()}
@@ -539,13 +539,13 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               <button
                 type="button"
                 onClick={() => setShowAddExpense(false)}
-                className="flex-1 border py-2.5 rounded-xl font-bold text-xs"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-blue-900 text-white py-2.5 rounded-xl font-bold text-xs shadow"
+                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white py-2.5 rounded-xl font-bold text-xs shadow"
               >
                 Save
               </button>
@@ -563,16 +563,16 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateCustomer}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="font-bold text-lg text-gray-900 border-b pb-2">Add Udhaar Customer</div>
+            <div className="font-bold text-lg text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-2">Add Udhaar Customer</div>
             <input
               type="text"
               value={custName}
               onChange={(e) => setCustName(e.target.value)}
               placeholder="Customer Full Name *"
               required
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <input
               type="tel"
@@ -581,22 +581,22 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               placeholder="Mobile / WhatsApp Number (10 digits) *"
               required
               maxLength={15}
-              className="w-full border rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-gray-500 dark:text-slate-400">
               📱 Mobile number is used to send automated WhatsApp Udhaar receipts and balance updates.
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowAddCustomer(false)}
-                className="flex-1 border py-2.5 rounded-xl font-bold text-xs"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-blue-900 text-white py-2.5 rounded-xl font-bold text-xs shadow"
+                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white py-2.5 rounded-xl font-bold text-xs shadow"
               >
                 Save
               </button>
@@ -614,13 +614,13 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleCustomerPayment}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="font-bold text-lg text-gray-900 border-b pb-2">
+            <div className="font-bold text-lg text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-2">
               Receive Payment: {payingCustomer.name}
             </div>
-            <div className="text-xs text-gray-500">
-              Current Due: <span className="font-bold text-red-600">{formatMoney(payingCustomer.currentBalance)}</span>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Current Due: <span className="font-bold text-red-600 dark:text-red-400">{formatMoney(payingCustomer.currentBalance)}</span>
             </div>
             <input
               type="number"
@@ -629,19 +629,19 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
               placeholder="Payment Amount (₹) *"
               required
               min="1"
-              className="w-full border rounded-xl px-3 py-2 text-base font-semibold"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-base font-semibold bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
             />
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setPayingCustomer(null)}
-                className="flex-1 border py-2.5 rounded-xl font-bold text-xs"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-green-600 text-white py-2.5 rounded-xl font-bold text-xs shadow"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-xs shadow"
               >
                 Record Payment
               </button>
@@ -658,26 +658,26 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl cursor-default animate-in fade-in"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl cursor-default animate-in fade-in border border-transparent dark:border-slate-800"
           >
-            <div className="text-center border-b pb-3">
+            <div className="text-center border-b border-gray-200 dark:border-slate-800 pb-3">
               <div className="text-3xl mb-1">✅</div>
-              <div className="font-bold text-lg text-gray-900">Payment Recorded</div>
-              <div className="text-xs text-gray-500">{paymentReceipt.customer.name}</div>
+              <div className="font-bold text-lg text-gray-900 dark:text-white">Payment Recorded</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">{paymentReceipt.customer.name}</div>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-xs">
+            <div className="bg-gray-50 dark:bg-slate-800/80 rounded-xl p-3 space-y-1.5 text-xs border border-transparent dark:border-slate-700">
               <div className="flex justify-between">
-                <span className="text-gray-500">Jama Rashi (Paid):</span>
-                <span className="font-bold text-green-700">{formatMoney(paymentReceipt.amountPaid)}</span>
+                <span className="text-gray-500 dark:text-slate-400">Jama Rashi (Paid):</span>
+                <span className="font-bold text-green-700 dark:text-green-400">{formatMoney(paymentReceipt.amountPaid)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Pichla Baaki (Previous Due):</span>
-                <span className="font-semibold text-gray-700">{formatMoney(paymentReceipt.previousBalance)}</span>
+                <span className="text-gray-500 dark:text-slate-400">Pichla Baaki (Previous Due):</span>
+                <span className="font-semibold text-gray-700 dark:text-slate-300">{formatMoney(paymentReceipt.previousBalance)}</span>
               </div>
-              <div className="flex justify-between border-t pt-1 font-bold">
-                <span className="text-gray-700">Bacha Hua Baaki (Remaining):</span>
-                <span className={paymentReceipt.remainingBalance > 0 ? 'text-red-600' : 'text-green-700'}>
+              <div className="flex justify-between border-t border-gray-200 dark:border-slate-700 pt-1 font-bold">
+                <span className="text-gray-700 dark:text-slate-300">Bacha Hua Baaki (Remaining):</span>
+                <span className={paymentReceipt.remainingBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}>
                   {formatMoney(paymentReceipt.remainingBalance)}
                 </span>
               </div>
@@ -697,7 +697,7 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
             <button
               type="button"
               onClick={() => setPaymentReceipt(null)}
-              className="w-full border border-gray-300 py-2 rounded-xl font-bold text-xs text-gray-700 hover:bg-gray-50"
+              className="w-full border border-gray-300 dark:border-slate-700 py-2 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
             >
               Close
             </button>
@@ -713,53 +713,53 @@ export default function BusinessScreen({ shopId }: { shopId: UUID }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-md w-full p-5 space-y-3 shadow-xl max-h-[85vh] flex flex-col cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 space-y-3 shadow-xl max-h-[85vh] flex flex-col cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="flex justify-between items-center border-b pb-2">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-800 pb-2">
               <div>
-                <div className="font-bold text-base text-gray-900">{viewingCustomer.name}</div>
-                <div className="text-xs text-gray-500">Khata Statement</div>
+                <div className="font-bold text-base text-gray-900 dark:text-white">{viewingCustomer.name}</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">Khata Statement</div>
               </div>
               <button
                 onClick={() => setViewingCustomer(null)}
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-lg font-bold"
               >
                 ×
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 text-xs divide-y divide-gray-50">
+            <div className="flex-1 overflow-y-auto space-y-2 text-xs divide-y divide-gray-50 dark:divide-slate-800">
               {customerLedgerEntries.length === 0 ? (
-                <div className="text-center text-gray-400 py-6">No ledger entries recorded</div>
+                <div className="text-center text-gray-400 dark:text-slate-500 py-6">No ledger entries recorded</div>
               ) : (
                 customerLedgerEntries.map((e) => (
                   <div key={e.id} className="pt-2 flex justify-between items-center">
                     <div>
-                      <div className="font-semibold text-gray-800">
+                      <div className="font-semibold text-gray-800 dark:text-slate-200">
                         {e.type === 'sale' ? 'Purchase on Udhaar' : 'Payment Received'}
                       </div>
-                      <div className="text-gray-400 text-[11px]">
+                      <div className="text-gray-400 dark:text-slate-500 text-[11px]">
                         {new Date(e.createdAt).toLocaleDateString()} • {e.note || ''}
                       </div>
                     </div>
                     <div className="text-right">
                       <div
                         className={`font-bold ${
-                          e.amount > 0 ? 'text-red-600' : 'text-green-700'
+                          e.amount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'
                         }`}
                       >
                         {e.amount > 0 ? `+${formatMoney(e.amount)}` : formatMoney(e.amount)}
                       </div>
-                      <div className="text-gray-400 text-[11px]">Bal: {formatMoney(e.runningBalance)}</div>
+                      <div className="text-gray-400 dark:text-slate-500 text-[11px]">Bal: {formatMoney(e.runningBalance)}</div>
                     </div>
                   </div>
                 ))
               )}
             </div>
 
-            <div className="border-t pt-3 flex justify-between font-bold text-sm">
+            <div className="border-t border-gray-200 dark:border-slate-800 pt-3 flex justify-between font-bold text-sm text-gray-900 dark:text-white">
               <span>Final Outstanding:</span>
-              <span className="text-red-600">{formatMoney(viewingCustomer.currentBalance)}</span>
+              <span className="text-red-600 dark:text-red-400">{formatMoney(viewingCustomer.currentBalance)}</span>
             </div>
           </div>
         </div>

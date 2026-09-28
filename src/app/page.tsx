@@ -10,10 +10,10 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-950">
         <div className="text-center">
-          <div className="text-4xl font-bold text-blue-900 mb-2">बैठक</div>
-          <div className="text-gray-500 text-sm">Loading your shop...</div>
+          <div className="text-4xl font-bold text-blue-900 dark:text-blue-400 mb-2">बैठक</div>
+          <div className="text-gray-500 dark:text-slate-400 text-sm">Loading your shop...</div>
         </div>
       </div>
     );

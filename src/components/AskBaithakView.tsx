@@ -109,14 +109,14 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="p-4 bg-white border-b border-gray-200">
+      <div className="p-4 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🤖</span>
           <div>
-            <div className="font-black text-base text-gray-900">Ask Baithak</div>
-            <div className="text-xs text-gray-500">
+            <div className="font-black text-base text-gray-900 dark:text-white">Ask Baithak</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
               Honest assistant powered strictly by verified shop facts
             </div>
           </div>
@@ -134,18 +134,18 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
               className={`max-w-[85%] rounded-2xl p-3.5 text-sm shadow-sm ${
                 m.role === 'user'
                   ? 'bg-blue-900 text-white rounded-br-none'
-                  : 'bg-white border border-gray-200 text-gray-900 rounded-bl-none'
+                  : 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-bl-none'
               }`}
             >
               <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
 
               {/* Cited Metrics Card */}
               {m.citedMetrics && m.citedMetrics.length > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-gray-100 grid grid-cols-2 gap-2 text-xs">
+                <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-xs">
                   {m.citedMetrics.map((met, mIdx) => (
-                    <div key={mIdx} className="bg-gray-50 p-2 rounded-xl border border-gray-100">
-                      <div className="text-gray-400 font-medium text-[11px]">{met.label}</div>
-                      <div className="font-black text-blue-900 text-xs mt-0.5">{met.value}</div>
+                    <div key={mIdx} className="bg-gray-50 dark:bg-slate-800 p-2 rounded-xl border border-gray-100 dark:border-slate-700">
+                      <div className="text-gray-400 dark:text-slate-400 font-medium text-[11px]">{met.label}</div>
+                      <div className="font-black text-blue-900 dark:text-blue-400 text-xs mt-0.5">{met.value}</div>
                     </div>
                   ))}
                 </div>
@@ -159,7 +159,7 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
                   <button
                     key={sIdx}
                     onClick={() => handleSendQuery(sug)}
-                    className="bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 active:scale-95 text-xs font-semibold px-3 py-1.5 rounded-full transition-transform"
+                    className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 active:scale-95 text-xs font-semibold px-3 py-1.5 rounded-full transition-transform"
                   >
                     {sug}
                   </button>
@@ -170,7 +170,7 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
         ))}
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-gray-400 bg-white p-3 rounded-2xl border w-fit">
+          <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-400 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-3 rounded-2xl w-fit">
             <span className="animate-spin text-base">⏳</span>
             Consulting verified shop metrics…
           </div>
@@ -178,13 +178,13 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
       </div>
 
       {/* Input bar with Voice Button */}
-      <div className="p-3 bg-white border-t border-gray-200 flex items-center gap-2">
+      <div className="p-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center gap-2">
         <button
           onClick={handleToggleVoice}
           className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg transition-transform active:scale-90 ${
             isListening
               ? 'bg-red-500 text-white animate-pulse'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              : 'bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200'
           }`}
           title="Voice query (Tap to speak)"
         >
@@ -197,7 +197,7 @@ export default function AskBaithakView({ shopId }: { shopId: UUID }) {
           onChange={(e) => setInputQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSendQuery()}
           placeholder="Ask e.g. How was business today?…"
-          className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className="flex-1 border border-gray-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
         />
 
         <button

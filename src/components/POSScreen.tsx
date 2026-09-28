@@ -268,9 +268,9 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-full overflow-hidden bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100">
       {/* Top Search & Quick Bar */}
-      <div className="p-3 bg-white border-b border-gray-200 space-y-2">
+      <div className="p-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 space-y-2">
         <div className="flex items-center gap-2">
           <input
             ref={searchInputRef}
@@ -278,12 +278,12 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="🔍 Search products (type or tap below)…"
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="flex-1 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-gray-400 dark:placeholder-slate-500"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="text-gray-400 hover:text-gray-600 px-2 py-1 text-sm font-semibold"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 px-2 py-1 text-sm font-semibold"
             >
               Clear
             </button>
@@ -293,14 +293,14 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
         {/* Quick Taps (Top 6 Fast-sellers) */}
         {!search && quickProducts.length > 0 && (
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-xs font-semibold text-gray-400 self-center uppercase pr-1">
+            <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 self-center uppercase pr-1">
               Quick:
             </span>
             {quickProducts.map((p) => (
               <button
                 key={p.id}
                 onClick={() => addToCart(p)}
-                className="flex-shrink-0 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg px-2.5 py-1 text-xs font-medium hover:bg-blue-100 active:scale-95 transition-transform"
+                className="flex-shrink-0 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-blue-900 dark:text-blue-300 rounded-lg px-2.5 py-1 text-xs font-medium hover:bg-blue-100 dark:hover:bg-slate-700 active:scale-95 transition-transform"
               >
                 {p.name.split(' ')[0]} ({formatMoney(p.sellingPrice)})
               </button>
@@ -314,7 +314,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
         {/* Product Grid */}
         <div className="flex-1 overflow-y-auto p-3">
           {filtered.length === 0 ? (
-            <div className="text-center text-gray-400 mt-12">
+            <div className="text-center text-gray-400 dark:text-slate-600 mt-12">
               <div className="text-4xl mb-2">📦</div>
               <div className="font-medium">No products found</div>
               <div className="text-sm mt-1">Add items from the Products tab</div>
@@ -327,29 +327,29 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className={`bg-white border rounded-xl p-3 text-left transition-all shadow-sm flex flex-col justify-between min-h-[82px] active:scale-95 ${
+                    className={`border rounded-xl p-3 text-left transition-all shadow-sm flex flex-col justify-between min-h-[82px] active:scale-95 ${
                       isOutOfStock
-                        ? 'border-red-200 bg-red-50/30'
-                        : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50/50'
+                        ? 'border-red-200 dark:border-red-900/60 bg-red-50/30 dark:bg-red-950/20'
+                        : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-slate-800/80'
                     }`}
                   >
                     <div>
-                      <div className="font-semibold text-sm text-gray-900 leading-snug line-clamp-2">
+                      <div className="font-semibold text-sm text-gray-900 dark:text-white leading-snug line-clamp-2">
                         {product.name}
                       </div>
-                      <div className="text-xs text-gray-400 capitalize">{product.unit}</div>
+                      <div className="text-xs text-gray-400 dark:text-slate-500 capitalize">{product.unit}</div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <span className="text-blue-900 font-bold text-base">
+                      <span className="text-blue-900 dark:text-blue-400 font-bold text-base">
                         {formatMoney(product.sellingPrice)}
                       </span>
                       <span
                         className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                           isOutOfStock
-                            ? 'bg-red-100 text-red-700'
+                            ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300'
                             : product.stockQuantity <= product.minimumStock
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'text-gray-500'
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                            : 'text-gray-500 dark:text-slate-400'
                         }`}
                       >
                         {isOutOfStock ? 'Out' : `${product.stockQuantity}`}
@@ -387,20 +387,20 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
         <div
           className={`${
             isMobileCartOpen
-              ? 'fixed inset-0 z-50 flex flex-col bg-white md:static md:z-auto'
+              ? 'fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900 md:static md:z-auto'
               : 'hidden md:flex'
-          } md:w-96 flex-col bg-white border-t md:border-t-0 md:border-l border-gray-200 shadow-sm`}
+          } md:w-96 flex-col bg-white dark:bg-slate-900 border-t md:border-t-0 md:border-l border-gray-200 dark:border-slate-800 shadow-sm`}
         >
           {/* Cart Header */}
-          <div className="p-3 border-b border-gray-100 flex items-center justify-between bg-gray-50 md:bg-white">
+          <div className="p-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50 md:bg-white dark:bg-slate-900">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsMobileCartOpen(false)}
-                className="md:hidden text-blue-900 font-bold text-xs bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-sm"
+                className="md:hidden text-blue-900 dark:text-blue-400 font-bold text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-2.5 py-1 rounded-lg shadow-sm"
               >
                 ← Back
               </button>
-              <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
+              <span className="text-sm font-bold text-gray-800 dark:text-slate-100 uppercase tracking-wide">
                 Cart ({cart.reduce((s, i) => s + i.quantity, 0)} items)
               </span>
             </div>
@@ -420,7 +420,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
             {cart.length === 0 ? (
-              <div className="text-center text-gray-400 py-12">
+              <div className="text-center text-gray-400 dark:text-slate-500 py-12">
                 <div className="text-3xl mb-1">🛒</div>
                 <div className="text-sm font-medium">Cart is empty</div>
                 <div className="text-xs mt-0.5">Tap products on the left to add</div>
@@ -429,13 +429,13 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
               cart.map((item) => (
                 <div
                   key={item.product.id}
-                  className="flex items-center justify-between gap-2 border-b border-gray-50 pb-2"
+                  className="flex items-center justify-between gap-2 border-b border-gray-50 dark:border-slate-800 pb-2"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-900 truncate">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                       {item.product.name}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                       {formatMoney(item.product.sellingPrice)} each
                     </div>
                   </div>
@@ -444,22 +444,22 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => updateQty(item.product.id, item.quantity - 1)}
-                      className="w-8 h-8 rounded-lg bg-gray-100 text-gray-800 font-bold flex items-center justify-center hover:bg-gray-200 active:scale-90"
+                      className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-90"
                     >
                       −
                     </button>
-                    <span className="w-7 text-center font-bold text-sm text-gray-900">
+                    <span className="w-7 text-center font-bold text-sm text-gray-900 dark:text-white">
                       {item.quantity}
                     </span>
                     <button
                       onClick={() => updateQty(item.product.id, item.quantity + 1)}
-                      className="w-8 h-8 rounded-lg bg-gray-100 text-gray-800 font-bold flex items-center justify-center hover:bg-gray-200 active:scale-90"
+                      className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-90"
                     >
                       +
                     </button>
                   </div>
 
-                  <div className="w-16 text-right font-bold text-sm text-gray-900">
+                  <div className="w-16 text-right font-bold text-sm text-gray-900 dark:text-white">
                     {formatMoney(multiplyMoney(item.product.sellingPrice, item.quantity))}
                   </div>
                 </div>
@@ -469,10 +469,10 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
 
           {/* Checkout Controls */}
           {cart.length > 0 && (
-            <div className="border-t border-gray-200 p-3 space-y-3 bg-gray-50/50">
+            <div className="border-t border-gray-200 dark:border-slate-800 p-3 space-y-3 bg-gray-50/50 dark:bg-slate-950/60">
               {/* Discount Row */}
               <div className="flex items-center justify-between text-xs gap-2">
-                <span className="text-gray-600 font-medium">Discount (₹):</span>
+                <span className="text-gray-600 dark:text-slate-400 font-medium">Discount (₹):</span>
                 <input
                   type="number"
                   value={discountRupees}
@@ -480,14 +480,14 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                   placeholder="0.00"
                   min="0"
                   step="1"
-                  className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-600"
+                  className="w-24 border border-gray-300 dark:border-slate-700 rounded-lg px-2 py-1 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                 />
               </div>
 
               {/* Totals */}
-              <div className="flex items-center justify-between pt-1 border-t border-gray-200">
-                <span className="text-base font-semibold text-gray-700">Total</span>
-                <span className="text-2xl font-black text-gray-900">{formatMoney(total)}</span>
+              <div className="flex items-center justify-between pt-1 border-t border-gray-200 dark:border-slate-800">
+                <span className="text-base font-semibold text-gray-700 dark:text-slate-300">Total</span>
+                <span className="text-2xl font-black text-gray-900 dark:text-white">{formatMoney(total)}</span>
               </div>
 
               {/* Payment Methods */}
@@ -499,7 +499,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                     className={`py-2 rounded-xl text-xs font-bold transition-colors ${
                       paymentMethod === method
                         ? 'bg-blue-900 text-white shadow-sm'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+                        : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700'
                     }`}
                   >
                     {method === 'cash' ? '💵 Cash' : method === 'upi' ? '📱 UPI' : '📝 Udhaar'}
@@ -509,26 +509,26 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
 
               {/* Udhaar Customer Picker */}
               {paymentMethod === 'udhaar' && (
-                <div className="space-y-1.5 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
-                  <div className="text-xs font-semibold text-amber-900 flex justify-between">
+                <div className="space-y-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-2.5">
+                  <div className="text-xs font-semibold text-amber-900 dark:text-amber-300 flex justify-between">
                     <span>Select Customer for Udhaar:</span>
                     <button
                       onClick={() => setShowAddCustomer(!showAddCustomer)}
-                      className="text-blue-700 font-bold hover:underline"
+                      className="text-blue-700 dark:text-blue-400 font-bold hover:underline"
                     >
                       {showAddCustomer ? 'Select Existing' : '+ New Customer'}
                     </button>
                   </div>
 
                   {showAddCustomer ? (
-                    <div className="space-y-1.5 p-2 bg-white rounded-xl border border-amber-200">
-                      <div className="text-[11px] font-bold text-gray-800">New Khata Member:</div>
+                    <div className="space-y-1.5 p-2 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800">
+                      <div className="text-[11px] font-bold text-gray-800 dark:text-slate-200">New Khata Member:</div>
                       <input
                         type="text"
                         value={newCustomerName}
                         onChange={(e) => setNewCustomerName(e.target.value)}
                         placeholder="Customer Full Name *"
-                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-900"
+                        className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
                       <input
                         type="tel"
@@ -536,7 +536,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                         onChange={(e) => setNewCustomerPhone(e.target.value)}
                         placeholder="Mobile / WhatsApp No (e.g. 9876543210) *"
                         maxLength={15}
-                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-900"
+                        className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
                       <div className="flex gap-1.5 pt-1">
                         <button
@@ -546,7 +546,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                             setNewCustomerName('');
                             setNewCustomerPhone('');
                           }}
-                          className="flex-1 border border-gray-300 text-gray-600 font-bold text-xs py-1.5 rounded-lg bg-gray-50"
+                          className="flex-1 border border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-bold text-xs py-1.5 rounded-lg bg-gray-50 dark:bg-slate-800"
                         >
                           Cancel
                         </button>
@@ -564,7 +564,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                       <select
                         value={selectedCustomerId}
                         onChange={(e) => setSelectedCustomerId(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white text-gray-800 font-medium"
+                        className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 font-medium"
                       >
                         <option value="">-- Choose Customer --</option>
                         {customers.map((c) => (
@@ -581,7 +581,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                           if (!cust) return null;
                           if (!cust.phone) {
                             return (
-                              <div className="text-[11px] text-amber-900 bg-amber-100/80 p-2 rounded-lg space-y-1">
+                              <div className="text-[11px] text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/60 p-2 rounded-lg space-y-1">
                                 <div className="font-semibold">⚠️ No mobile number saved for {cust.name}.</div>
                                 <div className="flex gap-1">
                                   <input
@@ -589,7 +589,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                                     placeholder="Enter 10-digit mobile"
                                     value={quickPhoneInput}
                                     onChange={(e) => setQuickPhoneInput(e.target.value)}
-                                    className="flex-1 border border-amber-300 rounded px-2 py-0.5 text-xs bg-white"
+                                    className="flex-1 border border-amber-300 dark:border-amber-700 rounded px-2 py-0.5 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                   />
                                   <button
                                     type="button"
@@ -603,7 +603,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                             );
                           }
                           return (
-                            <div className="text-[11px] text-green-700 flex items-center gap-1 font-medium">
+                            <div className="text-[11px] text-green-700 dark:text-green-400 flex items-center gap-1 font-medium">
                               <span>✓ WhatsApp receipt will be sent to {cust.phone}</span>
                             </div>
                           );
@@ -623,12 +623,12 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                     placeholder="Cash Received (₹)"
                     min="0"
                     step="1"
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-xl px-3 py-2 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                   />
                   {cashReceivedPaise > 0 && (
                     <div className="flex justify-between text-xs px-1 font-semibold">
-                      <span className="text-gray-500">Change to return:</span>
-                      <span className={change > 0 ? 'text-green-700 text-sm' : 'text-gray-700'}>
+                      <span className="text-gray-500 dark:text-slate-400">Change to return:</span>
+                      <span className={change > 0 ? 'text-green-700 dark:text-green-400 text-sm' : 'text-gray-700 dark:text-slate-300'}>
                         {formatMoney(change)}
                       </span>
                     </div>
@@ -663,25 +663,25 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in duration-200 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in duration-200 cursor-default border border-transparent dark:border-slate-800"
           >
-            <div className="text-center border-b pb-3">
+            <div className="text-center border-b border-gray-200 dark:border-slate-800 pb-3">
               <div className="text-4xl mb-1">🧾</div>
-              <div className="font-black text-xl text-gray-900">Sale Complete</div>
-              <div className="text-xs text-gray-500">
+              <div className="font-black text-xl text-gray-900 dark:text-white">Sale Complete</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">
                 Receipt #{completedSale.sale.saleNumber} •{' '}
                 {new Date(completedSale.sale.createdAt).toLocaleTimeString()}
               </div>
             </div>
 
             {/* Receipt Items */}
-            <div className="space-y-1.5 max-h-48 overflow-y-auto text-xs border-b pb-3">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto text-xs border-b border-gray-200 dark:border-slate-800 pb-3">
               {completedSale.items.map((i) => (
                 <div key={i.product.id} className="flex justify-between">
-                  <span className="text-gray-800 font-medium">
+                  <span className="text-gray-800 dark:text-slate-200 font-medium">
                     {i.product.name} × {i.quantity}
                   </span>
-                  <span className="font-bold text-gray-900">
+                  <span className="font-bold text-gray-900 dark:text-white">
                     {formatMoney(multiplyMoney(i.product.sellingPrice, i.quantity))}
                   </span>
                 </div>
@@ -691,17 +691,17 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
             {/* Summary */}
             <div className="space-y-1 text-xs">
               <div className="flex justify-between font-bold text-sm">
-                <span>{completedSale.sale.paymentMethod === 'udhaar' ? 'Bill Amount:' : 'Total Paid:'}</span>
-                <span className="text-base text-blue-900">
+                <span className="text-gray-900 dark:text-white">{completedSale.sale.paymentMethod === 'udhaar' ? 'Bill Amount:' : 'Total Paid:'}</span>
+                <span className="text-base text-blue-900 dark:text-blue-400 font-bold">
                   {formatMoney(completedSale.sale.total)}
                 </span>
               </div>
-              <div className="flex justify-between text-gray-500 capitalize">
+              <div className="flex justify-between text-gray-500 dark:text-slate-400 capitalize">
                 <span>Payment Method:</span>
-                <span className="font-semibold text-gray-800">{completedSale.sale.paymentMethod}</span>
+                <span className="font-semibold text-gray-800 dark:text-slate-200">{completedSale.sale.paymentMethod}</span>
               </div>
               {(completedSale.sale.changeGiven ?? 0) > 0 && (
-                <div className="flex justify-between font-bold text-green-700">
+                <div className="flex justify-between font-bold text-green-700 dark:text-green-400">
                   <span>Change Given:</span>
                   <span>{formatMoney(completedSale.sale.changeGiven!)}</span>
                 </div>
@@ -710,22 +710,22 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
 
             {/* Udhaar Khata Customer Summary & 1-Tap WhatsApp */}
             {completedSale.sale.paymentMethod === 'udhaar' && completedSale.customer && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2 text-xs">
-                <div className="flex items-center justify-between font-bold text-amber-900 border-b border-amber-200 pb-1.5">
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between font-bold text-amber-900 dark:text-amber-300 border-b border-amber-200 dark:border-amber-800 pb-1.5">
                   <span>📖 Khata (Udhaar) Updated</span>
-                  <span className="font-semibold text-gray-700">{completedSale.customer.name}</span>
+                  <span className="font-semibold text-gray-700 dark:text-slate-300">{completedSale.customer.name}</span>
                 </div>
 
-                <div className="space-y-1 text-gray-700">
+                <div className="space-y-1 text-gray-700 dark:text-slate-300">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Pichla Baaki (Previous Balance):</span>
+                    <span className="text-gray-500 dark:text-slate-400">Pichla Baaki (Previous Balance):</span>
                     <span className="font-semibold">{formatMoney(completedSale.previousBalance ?? 0)}</span>
                   </div>
-                  <div className="flex justify-between text-blue-900 font-bold">
+                  <div className="flex justify-between text-blue-900 dark:text-blue-400 font-bold">
                     <span>Is Bill Ka Udhaar (This Purchase):</span>
                     <span>+{formatMoney(completedSale.sale.total)}</span>
                   </div>
-                  <div className="flex justify-between border-t border-amber-200 pt-1 font-black text-red-600 text-sm">
+                  <div className="flex justify-between border-t border-amber-200 dark:border-amber-800 pt-1 font-black text-red-600 dark:text-red-400 text-sm">
                     <span>Kul Naya Baaki (Total Due Now):</span>
                     <span>{formatMoney(completedSale.newBalance ?? completedSale.sale.total)}</span>
                   </div>
@@ -746,8 +746,8 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                     </span>
                   </button>
                 ) : (
-                  <div className="mt-2 space-y-1.5 pt-1 border-t border-amber-200">
-                    <div className="text-[11px] font-semibold text-amber-900">
+                  <div className="mt-2 space-y-1.5 pt-1 border-t border-amber-200 dark:border-amber-800">
+                    <div className="text-[11px] font-semibold text-amber-900 dark:text-amber-300">
                       ⚠️ Mobile number not saved. Enter number to send WhatsApp receipt:
                     </div>
                     <div className="flex gap-1.5">
@@ -756,7 +756,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
                         value={quickPhoneInput}
                         onChange={(e) => setQuickPhoneInput(e.target.value)}
                         placeholder="10-digit mobile number"
-                        className="flex-1 border border-amber-300 rounded-lg px-2 py-1 text-xs bg-white text-gray-900"
+                        className="flex-1 border border-amber-300 dark:border-amber-700 rounded-lg px-2 py-1 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
                       <button
                         type="button"
@@ -774,7 +774,7 @@ export default function POSScreen({ shopId }: { shopId: UUID }) {
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => window.print()}
-                className="flex-1 border border-gray-300 py-2.5 rounded-xl font-bold text-xs text-gray-700 hover:bg-gray-50"
+                className="flex-1 border border-gray-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 🖨️ Print
               </button>
