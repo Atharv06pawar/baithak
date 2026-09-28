@@ -24,6 +24,7 @@ import {
 } from '@/lib/cloud/supabase';
 import { exportShopBackup, restoreShopBackup } from '@/lib/backup';
 import { updateShop } from '@/lib/domain/shop';
+import { getDB } from '@/lib/db';
 import { authenticateWithGoogle, instantGoogleLink } from '@/lib/cloud/googleAuth';
 import { useMobileBackHandler } from '@/lib/hooks/useMobileBackHandler';
 import type { Shop } from '@/lib/types';
@@ -262,6 +263,30 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
     } finally {
       setIsImportingJson(false);
       e.target.value = '';
+    }
+  }
+
+  // Factory Reset / Clear All Local Test Data
+  async function handleFactoryReset() {
+    const confirmed = window.confirm(
+      '⚠️ WARNING: This will permanently erase all local test data, products, sales, and customers on this device and return to the Setup screen. Are you sure you want to start fresh?'
+    );
+    if (!confirmed) return;
+
+    const typed = window.prompt('Please type "RESET" to confirm clearing all local shop data:');
+    if (typed !== 'RESET') {
+      alert('Reset cancelled. Your data was not touched.');
+      return;
+    }
+
+    try {
+      const db = getDB();
+      await db.delete();
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    } catch (err) {
+      alert('Failed to reset: ' + (err instanceof Error ? err.message : 'Error'));
     }
   }
 
@@ -1017,31 +1042,56 @@ export default function SettingsBackupView({ shop }: { shop: Shop }) {
         </div>
       </div>
 
-      {/* Synthetic Shop Simulator */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 shadow-sm space-y-3">
+      {/* ⚠️ Danger Zone: Clear Local Data & Reset */}
+      <div className="bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl p-4 shadow-sm space-y-3">
         <div>
-          <div className="font-bold text-sm text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-            <span>🧪</span> Synthetic Paan Shop Simulator
+          <div className="font-bold text-sm text-red-900 dark:text-red-300 flex items-center gap-1.5">
+            <span>🗑️</span> Factory Reset: Clear All Local Data
           </div>
-          <div className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
-            Need test data? Populate your shop instantly with 100 real paan shop catalog items (Banarasi, Baba, Rajnigandha, Classic, Thums Up, Lays, Cadbury), 5 wholesale suppliers, and 7 days of simulated sales.
+          <div className="text-xs text-red-700 dark:text-red-400 mt-0.5 leading-relaxed">
+            Need a clean slate? Erase all local test sales, fake products, and customer records from this device and return to the Setup screen to start fresh.
           </div>
         </div>
 
-        {simulationResult && (
-          <div className="bg-white/80 dark:bg-slate-800 p-2.5 rounded-xl text-xs font-semibold text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800">
-            {simulationResult}
-          </div>
-        )}
-
         <button
-          onClick={handleRunSimulator}
-          disabled={isSimulating}
-          className="bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow transition-transform disabled:opacity-50"
+          type="button"
+          onClick={handleFactoryReset}
+          className="bg-red-600 hover:bg-red-700 active:scale-98 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow flex items-center justify-center gap-2 transition-transform"
         >
-          {isSimulating ? 'Generating 100 Items & Sales…' : '✨ Populate Shop with Realistic Data'}
+          <span>⚠️</span>
+          <span>Clear All Data & Start Fresh (Factory Reset)</span>
         </button>
       </div>
+
+      {/* Developer / Testing Simulator (Collapsible) */}
+      <details className="bg-gray-100/70 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-800 rounded-2xl p-3.5 text-xs group">
+        <summary className="font-bold text-gray-700 dark:text-slate-300 cursor-pointer list-none flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <span>🧪</span> Developer / Test Tools: Synthetic Simulator
+          </span>
+          <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        
+        <div className="pt-3 space-y-2.5">
+          <p className="text-gray-500 dark:text-slate-400 text-[11px] leading-relaxed">
+            Populates your shop with 100 sample items, 5 suppliers, and 7 days of simulated sales for testing.
+          </p>
+
+          {simulationResult && (
+            <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl text-xs font-semibold text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800">
+              {simulationResult}
+            </div>
+          )}
+
+          <button
+            onClick={handleRunSimulator}
+            disabled={isSimulating}
+            className="bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold py-2 px-3.5 rounded-xl text-xs shadow transition-transform disabled:opacity-50"
+          >
+            {isSimulating ? 'Generating Sample Items…' : 'Generate Sample Test Data'}
+          </button>
+        </div>
+      </details>
 
       {/* Shop Info */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 shadow-sm space-y-2 text-xs">
